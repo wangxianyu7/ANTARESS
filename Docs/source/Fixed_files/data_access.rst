@@ -10,8 +10,8 @@
 
 .. role:: green
 
-Data retrieval
-==============
+Data inputs
+===========
 
 We describe here how to retrieve spectral time-series from spectrographs to which ``ANTARESS`` can be applied to.
 

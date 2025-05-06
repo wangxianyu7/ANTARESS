@@ -52,7 +52,8 @@ Secondary packages
 A number of packages are required to run ``ANTARESS``. They should be installed automatically, but if you encounter some trouble you can install them manually as described below.
 
 - Standard packages
-    Install `arviz <https://python.arviz.org/en/stable/>`_, `astropy <https://www.astropy.org/>`_, `batman-package <https://lkreidberg.github.io/batman/docs/html/index.html>`_, `dace_query <https://dace.unige.ch/dashboard/>`_, `emcee <https://emcee.readthedocs.io/en/stable/>`_, `lmfit <https://lmfit.github.io/lmfit-py/>`_, `pandas <https://pandas.pydata.org/>`_, 
+    Install `arviz <https://python.arviz.org/en/stable/>`_, `astropy <https://www.astropy.org/>`_, `batman-package <https://lkreidberg.github.io/batman/docs/html/index.html>`_, `dace_query <https://dace.unige.ch/dashboard/>`_, `emcee <https://emcee.readthedocs.io/en/stable/>`_, 
+    `dynesty <https://dynesty.readthedocs.io/en/stable/>`_, `lmfit <https://lmfit.github.io/lmfit-py/>`_, `pandas <https://pandas.pydata.org/>`_, 
     `pathos <https://pathos.readthedocs.io/en/latest/pathos.html>`_, `PyAstronomy <https://pyastronomy.readthedocs.io/en/latest/>`_, `scipy <https://scipy.org/>`_, `statsmodels <https://www.statsmodels.org/stable/index.html>`_ using::
     
         pip install package         

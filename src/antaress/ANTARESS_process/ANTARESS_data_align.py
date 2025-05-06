@@ -3,7 +3,7 @@
 import numpy as np
 from copy import deepcopy
 import bindensity as bind
-from ..ANTARESS_general.utils import np_where1D
+from ..ANTARESS_general.utils import dup_edges
 
 #NB: Kept in an independent file to prevent issues of circular import 
 def align_data(data_exp,rout_mode,nord,dim_exp_resamp,resamp_mode,cen_bins_resamp, edge_bins_resamp,rv_shift_cen,spec_dopshift_cen,rv_shift_edge = None ,spec_dopshift_edge = None , nocov = False):
@@ -95,18 +95,23 @@ def align_data(data_exp,rout_mode,nord,dim_exp_resamp,resamp_mode,cen_bins_resam
        
         #Processing each order
         key2proc = []
-        if ('tell' in data_exp):        key2proc+=['tell']       #Telluric spectrum     
-        if ('mean_gcal' in data_exp):   key2proc+=['mean_gcal']  #Scaling calibration profile
-        if ('sing_gcal' in data_exp):   key2proc+=['sing_gcal']  #Weighing calibration profile          
-        if ('sdet2' in data_exp):       key2proc+=['sdet2']      #Weighing detector noise
+        if ('tell' in data_exp):        key2proc+=['tell']              #Telluric spectrum     
+        if ('mean_gcal' in data_exp):   key2proc+=['mean_gcal']         #Scaling calibration profile
+        if ('sing_gcal' in data_exp):   key2proc+=['sing_gcal']         #Weighing calibration profile          
+        if ('sdet2' in data_exp):       key2proc+=['sdet2']             #Weighing detector noise 
+        for key_var in ['EFsc2','EFdiff2','EFintr2','EFem2','EAbs2']:   #1D variance grids
+            if (key_var in data_exp):   key2proc+=[key_var] 
         for key in key2proc:
             data_align[key]=np.zeros(dim_exp_resamp, dtype=float)*np.nan
             for iord in range(nord):
+                
+                #Shifting and resampling
                 data_align[key][iord] = bind.resampling(data_align['edge_bins'][iord], edge_bins_rest[iord], data_exp[key][iord], kind=resamp_mode)            
-                idx_def = np_where1D(~np.isnan(data_align[key][iord]))
-                if idx_def[0]>0:data_align[key][iord,0:idx_def[0]-1] = data_exp[key][iord,0]              
-                if idx_def[-1]<dim_exp_resamp[1]-1:data_align[key][iord,idx_def[-1]+1::] = data_exp[key][iord,idx_def[-1]]
-
+                
+                #Keeping profiles fully defined
+                #    - edge values are filled with latest defined value
+                data_align[key][iord] = dup_edges(data_align[key][iord])
+                
     #Data remain defined on independent tables for each exposure
     #    - we do not resample the data tables of each exposure and keep them defined on their shifted spectral tables
     else:      

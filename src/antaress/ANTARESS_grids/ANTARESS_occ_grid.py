@@ -45,7 +45,7 @@ def calc_plocc_ar_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic
         param = deepcopy(system_param['star'])
         param['use_ar']=cond_ar
         args={'rout_mode':'Intr_prop'}
-        if cond_ar:args = {'ar_coord_par':gen_dic['ar_coord_par']}
+        if cond_ar:args['ar_coord_par']= gen_dic['ar_coord_par']
         
         #Theoretical properties of planet occulted-regions
         #    - calculated for the nominal and broadband planet properties 
@@ -63,7 +63,7 @@ def calc_plocc_ar_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic
         if cond_ar:
             datasave_npz(gen_dic['save_data_dir']+'Introrig_prop/AR_Prop_'+inst+'_'+vis,ar_prop)    
 
-            #Save properties combined from planet-occulted and spotted regions
+            #Save properties combined from planet-occulted and active regions
             datasave_npz(gen_dic['save_data_dir']+'Introrig_prop/Common_Prop_'+inst+'_'+vis,common_prop) 
 
         #Save planet-occulted region properties
@@ -157,7 +157,7 @@ def up_plocc_arocc_prop(inst,vis,args,param_in,studied_pl,ph_grid,coord_grid, st
     #Process active regions
     if len(studied_ar)>0:
 
-        #Set up properties of spotted regions for the active region coordinate retrieval in sub_calc_plocc_ar_prop
+        #Set up properties of active regions for the active region coordinate retrieval in sub_calc_plocc_ar_prop
         for ar_loc in studied_ar:
             
             #Recalculate active region grid if relevant
@@ -169,7 +169,7 @@ def up_plocc_arocc_prop(inst,vis,args,param_in,studied_pl,ph_grid,coord_grid, st
             if args['fit_ar']:param['Tc_ar__IS'+inst+'_VS'+vis+'_AR'+ar_loc] += args['bjd_time_shift'][inst][vis]
 
         #Recalculate active region coordinates if relevant        
-        if args['fit_ar'] or args['fit_ar_ang']:
+        if args['fit_ar'] or (args['fit_ar_ang']!=[]):
     
             #Retrieving the active region coordinates for all the times that we have
             ar_prop = retrieve_ar_prop_from_param(param,inst,vis)
@@ -398,7 +398,7 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
 
             #Update cond_ar_all
             cond_ar_all[isub_exp]=ar_within_grid_all
-        if np.sum(cond_ar_all)==0:print('WARNING: no active regions are visible in any exposure for nominal properties')
+        if (np.sum(cond_ar_all)==0) and (not args['fit']):print('WARNING: no active regions are visible in any exposure for nominal properties')
 
     #If active regions are not present, need to initialize the active region LD dictionary entry for later purposes
     else:
@@ -548,7 +548,7 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
             for iosamp in range(n_osamp_exp):
 
                 #Need to define a reduced version of the active region dictionary in this oversampled position. This is required
-                #if we want to account for presence of spots in planet-occulted regions.
+                #if we want to account for presence of active regions in planet-occulted regions.
                 ar_are_visible = False
                 reduced_ar_prop_oversamp={}
                 for ar in ar_in_exp:
@@ -604,16 +604,15 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
                         surf_prop_dic_pl[key_chrom[-1]]['line_prof'][:,isub_exp]+=plocc_prof(args,studied_pl_exp,coord_reg_dic,idx_w,star_I_prop,key_chrom,par_star,theo_dic)
 
                 #------------------------------------------------------------
-                #Spotted, not-planet occulted regions
-                #    - properties are calculated over cells that are not occulted by any planet
+                #Active regions
                 #    - calculated only for differential profiles
-                if cond_ar and (args['rout_mode']=='DiffProf'):
+                if cond_ar and (args['rout_mode']!='IntrProf'):
                     cond_occ_ar = False
                     
                     #Need to make a new dictionary that contains the active region properties for this oversampled exposure
                     ar_prop_oversamp = {}
 
-                    #Building the active region dictionary - we need to extract this information for all the spots to find their overlap
+                    #Building the active region dictionary - we need to extract this information for all the active regions to find their overlap
                     for ar in ar_in_exp:
                   
                         #Make a rough estimate of the active region grid - has a different resolution than the stellar grid - is in inclined star rest frame
@@ -645,13 +644,13 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
                             #Going over the bands in each chromatic mode
                             for iband in range(system_ar_prop[subkey_chrom]['nw']):
                                 Focc_star_ar[subkey_chrom][iband], cond_occ_ar = calc_ar_region_prop(line_occ_HP[subkey_chrom][iband], cond_occ_ar, ar_prop_oversamp, iband, star_I_prop[subkey_chrom], 
-                                                                system_ar_prop[subkey_chrom], par_star, ar_proc[subkey_chrom][iband],ar,theo_dic['Ssub_Sstar_ar'][ar], 
+                                                                system_ar_prop[subkey_chrom], par_star, ar_proc,ar,theo_dic['Ssub_Sstar_ar'][ar], 
                                                                 theo_dic['Ssub_Sstar'], theo_dic['Istar_norm_'+subkey_chrom], sum_prop_dic[subkey_chrom][ar], coord_reg_dic[subkey_chrom][ar],
                                                                 range_dic[subkey_chrom][ar], Focc_star_ar[subkey_chrom][iband], par_list, range_par_list, args, cb_band_ar_dic[subkey_chrom][iband])
     
                                 #Cumulate line profile from active region cells
                                 #    - this is a deviation profile, corresponding to Freg(quiet) - Freg(ar) over 
-                                #    - in high-precision mode there is a single subkey_chrom and achromatic band, but several spots may have been processed
+                                #    - in high-precision mode there is a single subkey_chrom and achromatic band, but several active regions may have been processed
                                 if ('line_prof' in par_list_in):
                                     surf_prop_dic_ar[subkey_chrom]['line_prof'][:,isub_exp]+=sum_prop_dic[subkey_chrom][ar]['line_prof']
 
@@ -667,7 +666,7 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
             #    - undefined values remain set to nan, and are otherwise normalized by the flux from the planet-occulted region
             #    - we use a single Itot as condition that the planet occulted the star
             calc_mean_occ_region_prop(studied_pl_exp,surf_prop_dic_pl,n_osamp_exp_eff_pl,sum_prop_dic,key_chrom,par_list,isub_exp,out_ranges,range_par_list,range_dic)     
-            if cond_ar and (args['rout_mode']=='DiffProf'):               
+            if cond_ar and (args['rout_mode']!='IntrProf'):
                 calc_mean_occ_region_prop(ar_in_exp,surf_prop_dic_ar,n_osamp_exp_eff_ar,sum_prop_dic,key_chrom,par_list,isub_exp,out_ranges,range_par_list,range_dic)                            
                             
             #Normalized stellar flux after occultation by all planets and by all active regions
@@ -675,15 +674,16 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
             if Ftot_star:
                 for subkey_chrom in key_chrom:
                     surf_prop_dic_pl[subkey_chrom]['Ftot_star'][:,isub_exp] = 1.
-                    if cond_ar and (args['rout_mode']=='DiffProf'):surf_prop_dic_ar[subkey_chrom]['Ftot_star'][:,isub_exp] = 1.
+                    surf_prop_dic_common[subkey_chrom]['Ftot_star'][:,isub_exp] = 1.
+                    if cond_ar and (args['rout_mode']!='IntrProf'):surf_prop_dic_ar[subkey_chrom]['Ftot_star'][:,isub_exp] = 1.
 
                     #Planets
                     if n_osamp_exp_eff_pl>0:
                         surf_prop_dic_pl[subkey_chrom]['Ftot_star'][:,isub_exp] -= Focc_star_pl[subkey_chrom]/(n_osamp_exp_eff_pl*theo_dic['Ftot_star_'+subkey_chrom])
                         surf_prop_dic_common[subkey_chrom]['Ftot_star'][:,isub_exp] -= Focc_star_pl[subkey_chrom]/(n_osamp_exp_eff_pl*theo_dic['Ftot_star_'+subkey_chrom])
                     
-                    #Spots
-                    if cond_ar and (args['rout_mode']=='DiffProf') and (n_osamp_exp_eff_ar>0):
+                    #Active regions
+                    if cond_ar and (args['rout_mode']!='IntrProf') and (n_osamp_exp_eff_ar>0):
                         surf_prop_dic_ar[subkey_chrom]['Ftot_star'][:,isub_exp] -= (Focc_star_ar[subkey_chrom])/(n_osamp_exp_eff_ar*theo_dic['Ftot_star_'+subkey_chrom])
                         surf_prop_dic_common[subkey_chrom]['Ftot_star'][:,isub_exp] -= (Focc_star_ar[subkey_chrom])/(n_osamp_exp_eff_ar*theo_dic['Ftot_star_'+subkey_chrom])
 
@@ -692,14 +692,14 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
             if ('line_prof' in par_list_in):
 
                 #Stellar line profile from planet-occulted region
-                #    - accounting for both quiet and spotted cells
+                #    - accounting for both quiet and active cells
                 if (n_osamp_exp_eff_pl>0):
                     calc_mean_occ_region_line(theo_dic['precision'],star_I_prop,isub_exp,key_chrom,n_osamp_exp_eff_pl,Focc_star_pl,surf_prop_dic_pl,studied_pl_exp,args,par_star,theo_dic)
                     if 'corr_ar' in args:
                         surf_prop_dic_pl[key_chrom[-1]]['corr_supp'][:,isub_exp]/=n_osamp_exp_eff_pl
                         if args['conv2intr']:surf_prop_dic_pl[key_chrom[-1]]['corr_supp'][:,isub_exp] /= (args['Focc_corr'][key_chrom[-1]]/n_osamp_exp_eff_pl)
  
-                #Deviation line profile between quiet and spotted emission, from spotted cells outside of planet-occulted regions
+                #Deviation line profile between quiet and active emission, from active region cells outside of planet-occulted regions
                 if cond_ar and (args['rout_mode']=='DiffProf') and (n_osamp_exp_eff_ar > 0):
                     calc_mean_occ_region_line(theo_dic['precision'],star_I_prop,isub_exp,key_chrom,n_osamp_exp_eff_ar,Focc_star_ar,surf_prop_dic_ar,ar_in_exp,args,par_star,theo_dic)
 
@@ -870,7 +870,7 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,star_I_prop,system
         if ar_occ:
             n_grid = len(coord_grid['x_st_sky'])
             
-            #Identify the cells in the planet-occulted region that are spotted
+            #Identify the cells in the planet-occulted region that are active
             #    - 'gen_ar_flag_map' is set to True in every cell of the occulted region that is covered by at least one active region
             #    - 'fctrst_map_ar' is set to the contrast value of the active regions and accounts for overlap between active regions (bright wins)
             count_ar_olap = np.zeros(n_grid, dtype=int)
@@ -899,6 +899,7 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,star_I_prop,system
             cond_eff_ar = np.sum(gen_ar_flag_map)
             if cond_eff_ar:
                 for key in ['veq','alpha_rot','beta_rot']:
+                    coord_grid[key] = np.repeat(par_star[key],n_pl_occ)
                     coord_grid[key][fctrst_map_ar < 1.] = par_star[key+'_spots']
                     coord_grid[key][fctrst_map_ar >= 1.] = par_star[key+'_faculae']
 
@@ -916,7 +917,7 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,star_I_prop,system
             
             #Update flux-grid for active region cells, accounting for their specific limb-darkening and contrast
             _,_,_,Fsurf_ar_emit_grid,_,_ = calc_Isurf_grid([iband],coord_grid['nsub_star'],system_ar_prop,coord_grid,par_star,Ssub_Sstar,Istar_norm = Istar_norm_band,region = 'local',Ssub_Sstar_ref = theo_dic['Ssub_Sstar'])
-            Fsurf_grid_star[gen_ar_flag_map, iband] -= Fsurf_ar_emit_grid[gen_ar_flag_map, iband] * (1. - fctrst_map_ar[gen_ar_flag_map]) 
+            Fsurf_grid_star[gen_ar_flag_map, iband] = Fsurf_ar_emit_grid[gen_ar_flag_map, iband] * fctrst_map_ar[gen_ar_flag_map] 
 
             #Update total flux from occulted region
             Ftot_star = np.sum(Fsurf_grid_star, axis=0)
@@ -936,24 +937,24 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,star_I_prop,system
             #Re-calculate Local flux grid over current planet-occulted region, in current band
             _,_,_,Fsurf_grid_star_corr,_,_ = calc_Isurf_grid([iband],coord_grid['nsub_star'],star_I_prop,coord_grid,par_star,Ssub_Sstar,Istar_norm = Istar_norm_band,region = 'local',Ssub_Sstar_ref = theo_dic['Ssub_Sstar'])
 
-            #Define variables to store the total flux of the overlap regions for spots and faculae
+            #Define variables to store the total flux of the overlap between multiple active regions
             temp_ar = 0.
 
-            #Define number of cells spotted
+            #Define number of active cells 
             if ar_occ:args['corr_nsub_ov_ar'] = np.sum(gen_ar_flag_map)
             else:args['corr_nsub_ov_ar'] = 0.
 
             #If planet-occulted region covers active regions
             if cond_eff_ar:
                 _,_,_,Fsurf_ar_emit_grid,_,_ = calc_Isurf_grid([iband],coord_grid['nsub_star'],system_ar_prop,coord_grid,par_star,Ssub_Sstar,Istar_norm = Istar_norm_band,region = 'local',Ssub_Sstar_ref = theo_dic['Ssub_Sstar'])
-                args['corr_Far_grid'] = Fsurf_ar_emit_grid[gen_ar_flag_map, iband] * (1. - fctrst_map_ar[gen_ar_flag_map])
+                args['corr_Far_grid'] = Fsurf_ar_emit_grid[gen_ar_flag_map, iband] * fctrst_map_ar[gen_ar_flag_map]
                 args['corr_Fstar_grid_ar'] = Fsurf_grid_star_corr[gen_ar_flag_map, iband]
                 for key in ['corr_Far_grid','corr_Fstar_grid_ar']:args[key]=args[key].reshape(len(args[key]),1)
                 args['ar_flag_map'] = gen_ar_flag_map
                 temp_ar = np.sum(args['corr_Far_grid'] - args['corr_Fstar_grid_ar'], axis=0)*par_star['cont']
                 for key in ['corr_Far_grid','corr_Fstar_grid_ar']:args[key]*=par_star['cont']
 
-            #Puttigne everything together
+            #Putting everything together
             args['Focc_corr']['achrom'][iband] += temp_ar
 
         #--------------------------------
@@ -1185,7 +1186,7 @@ def sum_region_prop(line_occ_HP_band,iband,args,par_list,Fsurf_grid_band,Fsurf_g
         #Active region correction
         if ('corr_ar' in args) and (ar_contrast is None):
 
-            #Making temporary variables to store the planet-active region overlap and planet-facula overlap contributions to the correction
+            #Making temporary variables to store the planet-active region overlap contributions to the correction
             temp_line_ar = np.zeros(sum_prop_dic['corr_supp'].shape, dtype=float)
 
             if args['corr_nsub_ov_ar'] > 0.:
@@ -1583,7 +1584,7 @@ def retrieve_ar_prop_from_param(param, inst, vis):
 
     Transforms a dictionary with 'raw' active region properties in the format param_ISinstrument_VSvisit_ARarname to a more convenient active region dictionary of the form : 
         
-     ar_prop = { spotname : {'lat' : , 'Tc_ar' : , ....}}
+     ar_prop = { arname : {'lat' : , 'Tc_ar' : , ....}}
     
     The formatted dictionary contains the initial active region properties as well as additional derived active region properties, such as the longitude and latitude of the active region as well as 
     its visibility criterion (see `is_ar_visible`).
@@ -1604,8 +1605,8 @@ def retrieve_ar_prop_from_param(param, inst, vis):
     for par in param : 
 
         # Parameter is active region-related and linked to the right visit and instrument
-        if (('_IS_' in par) or ('_IS'+inst in par)) and (('_VS'+vis in par) or ('_VS_' in par)): 
-            contamin_par = par.split('__IS')[0]
+        if (('_IS_' in par) or ('_IS'+inst in par)) and (('_VS'+vis in par) or ('_VS_' in par)) and ('_AR' in par):
+            contamin_par = par.split('__IS')[0] 
             contamin_name = par.split('_AR')[1]
             if contamin_name not in contamin_prop : contamin_prop[contamin_name] = {}
             contamin_prop[contamin_name][contamin_par] = param[par]

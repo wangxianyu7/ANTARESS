@@ -18,6 +18,10 @@ stages:
 .setup_env:
   before_script:
     - apt update
+    - apt-get install -y libgsl-dev libgslcblas0 libcerf-dev
+    - export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+    - export LDFLAGS="-L/usr/lib/x86_64-linux-gnu"
+    - ls -l /usr/lib/x86_64-linux-gnu/libgsl*
     - apt install -y curl rsync bzip2 build-essential openssh-client git
     - eval $(ssh-agent -s)
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
@@ -31,7 +35,9 @@ stages:
     - micromamba activate $PROJECT_NAME
     #Install here packages that failed to install via ${PROJECT_NAME}_env.yml
     - pip install PyAstronomy
-    - pip install pysme-astro
+    - pip install pysme-astro   
+    - python setup.py build_ext --inplace
+    - ls -lh src/antaress/ANTARESS_analysis/C_grid/C_star_grid*.so
 
 Build distribution:
   extends: .setup_env

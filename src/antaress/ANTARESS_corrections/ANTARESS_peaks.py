@@ -6,7 +6,7 @@ from PyAstronomy import pyasl
 import bindensity as bind
 from pathos.multiprocessing import Pool
 from ..ANTARESS_conversions.ANTARESS_sp_cont import calc_spectral_cont
-from ..ANTARESS_general.utils import stop,np_where1D,init_parallel_func,dataload_npz,MAIN_multithread,gen_specdopshift,check_data
+from ..ANTARESS_general.utils import stop,np_where1D,init_parallel_func,dataload_npz,MAIN_multithread,gen_specdopshift,check_data,datasave_npz
 from ..ANTARESS_analysis.ANTARESS_inst_resp import return_pix_size
 
 def corr_cosm(inst,gen_dic,data_inst,plot_dic,data_dic,coord_dic):
@@ -26,6 +26,7 @@ def corr_cosm(inst,gen_dic,data_inst,plot_dic,data_dic,coord_dic):
         print('         Calculating data') 
         if (inst not in gen_dic['cosm_thresh']):gen_dic['cosm_thresh'][inst]={}
         if (inst not in gen_dic['cosm_n_wings']):gen_dic['cosm_n_wings'][inst]=0
+        if (inst not in gen_dic['cosm_masked']):gen_dic['cosm_masked'][inst]={}
         
         #Alignment mode
         if gen_dic['al_cosm']['mode']=='kep':print('         Aligning with Keplerian model')
@@ -36,6 +37,7 @@ def corr_cosm(inst,gen_dic,data_inst,plot_dic,data_dic,coord_dic):
         for ivisit,vis in enumerate(data_inst['visit_list']):
             data_vis=data_inst[vis]
             if (vis not in gen_dic['cosm_thresh'][inst]):gen_dic['cosm_thresh'][inst][vis] = 10
+            if (vis not in gen_dic['cosm_masked'][inst]):gen_dic['cosm_masked'][inst][vis]={}
             
             #RV used for spectra alignment set to keplerian model
             #    - RV relative to CDM are used since the correction is performed per visit, so that the systemic RV does not need to be set                
@@ -97,7 +99,7 @@ def corr_cosm(inst,gen_dic,data_inst,plot_dic,data_dic,coord_dic):
             
             #Processing all exposures    
             common_args = (data_vis['proc_DI_data_paths'],hcosm_ncomp,data_vis['n_in_visit'],cosm_ncomp,data_vis['dim_all'],gen_dic['al_cosm'],idx_ord_cc,cen_bins_all,cond_cc,flux_all,\
-                           return_pix_size(inst),data_inst['type'],rv_al_all,err2_all,edge_bins_all,ord_corr_list,gen_dic['resamp_mode'],data_vis['dim_exp'],data_vis['nspec'],gen_dic['cosm_thresh'][inst][vis],plot_dic['cosm_corr'],proc_DI_data_paths_new,gen_dic['cosm_n_wings'][inst])
+                           return_pix_size(inst),data_inst['type'],rv_al_all,err2_all,edge_bins_all,ord_corr_list,gen_dic['resamp_mode'],data_vis['dim_exp'],data_vis['nspec'],gen_dic['cosm_thresh'][inst][vis],plot_dic['cosm_corr'],proc_DI_data_paths_new,gen_dic['cosm_n_wings'][inst],gen_dic['cosm_masked'][inst][vis])
             if (gen_dic['cosm_nthreads']>1) and (gen_dic['cosm_nthreads']<=len(exp_corr_list)):MAIN_multithread(corr_cosm_vis,gen_dic['cosm_nthreads'],len(exp_corr_list),[exp_corr_list],common_args)                           
             else:corr_cosm_vis(exp_corr_list,*common_args)  
             data_vis['proc_DI_data_paths'] = proc_DI_data_paths_new
@@ -113,7 +115,7 @@ def corr_cosm(inst,gen_dic,data_inst,plot_dic,data_dic,coord_dic):
 
 
 def corr_cosm_vis(iexp_group,proc_DI_data_paths,hcosm_ncomp,n_in_visit,cosm_ncomp,dim_all,al_cosm,idx_ord_cc,cen_bins_all,cond_cc,flux_all,pix_size_v,data_type,rv_al_all,err2_all,edge_bins_all,ord_corr_list,\
-                  resamp_mode,dim_exp,nspec,cosm_thresh,plot_cosm_corr,proc_DI_data_paths_new,cosm_n_wings):
+                  resamp_mode,dim_exp,nspec,cosm_thresh,plot_cosm_corr,proc_DI_data_paths_new,cosm_n_wings,cosm_masked_vis):
     r"""**Cosmics correction routine per visit.**    
 
     Args:
@@ -125,6 +127,8 @@ def corr_cosm_vis(iexp_group,proc_DI_data_paths,hcosm_ncomp,n_in_visit,cosm_ncom
     """ 
     for iexp in iexp_group:
         data_exp = dataload_npz(proc_DI_data_paths+str(iexp))
+        if iexp in cosm_masked_vis:cosm_masked_exp = cosm_masked_vis[iexp]
+        else:cosm_masked_exp={}
         
         #Indexes of complementary exposures to current exposures
         #    - limited to the requested number
@@ -191,12 +195,20 @@ def corr_cosm_vis(iexp_group,proc_DI_data_paths,hcosm_ncomp,n_in_visit,cosm_ncom
             com_flux_comp = np.sum(flux_align_comp[:,iord,com_def_pix_ord]*dcen_bins_exp[iord,com_def_pix_ord],axis=1)
             com_flux_proc = np.sum(data_exp['flux'][iord,com_def_pix_ord]*dcen_bins_exp[iord,com_def_pix_ord])
             flux_align_comp[:,iord]*=(com_flux_proc/com_flux_comp[:,None])       
+            
+            #Masked ranges
+            #    - not to be flagged for cosmics
+            cond_def_exp = data_exp['cond_def'][iord] & (np.sum(~np.isnan(flux_align_comp[:,iord]),axis=0)>1)
+            if (iord in cosm_masked_exp) and (len(cosm_masked_exp[iord])>0):
+                cond_masked  = False
+                for bd_int in cosm_masked_exp[iord]:
+                    cond_masked |= (edge_bins_all[iexp,iord,0:-1]>=bd_int[0]) & (edge_bins_all[iexp,iord,1:]<=bd_int[1])   
+                cond_def_exp  &= (~cond_masked)
 
             #Mean spectrum over aligned complementary exposures and standard-deviation
             #    - for each bin with at least two defined complementary exposures, and defined in the current exposure
             mean_sp_loc = np.zeros(nspec, dtype=float)*np.nan
             std_sp_loc = np.zeros(nspec, dtype=float)*np.nan
-            cond_def_exp = data_exp['cond_def'][iord] & (np.sum(~np.isnan(flux_align_comp[:,iord]),axis=0)>1)
             if True in cond_def_exp:                         
                 mean_sp_loc[cond_def_exp] = np.nanmean(flux_align_comp[:,iord,cond_def_exp],axis=0)
                 std_sp_loc[cond_def_exp] = np.nanstd(flux_align_comp[:,iord,cond_def_exp],axis=0)
@@ -245,7 +257,7 @@ def corr_cosm_vis(iexp_group,proc_DI_data_paths,hcosm_ncomp,n_in_visit,cosm_ncom
         #    - too heavy to be saved for all exposures
         if (plot_cosm_corr!=''): 
             dic_sav = {'SNR_diff_exp':SNR_diff_exp,'idx_cosm_exp':idx_cosm_exp}
-            np.savez_compressed(proc_DI_data_paths_new+str(iexp)+'_add',data=dic_sav,allow_pickle=True)
+            datasave_npz(proc_DI_data_paths_new+str(iexp)+'_add',dic_sav)
 
         #Saving modified data and update paths
         np.savez_compressed(proc_DI_data_paths_new+str(iexp),data = data_exp,allow_pickle=True)     

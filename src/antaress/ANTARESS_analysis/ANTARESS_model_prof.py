@@ -118,7 +118,7 @@ def voigt(param,x,args=None):
         TBD
     
     """  
-    z_tab = 2.*np.sqrt(np.log(2.))*(x - param['rv' ])/param['FWHM'] +  1j*param['a_damp']
+    z_tab = 2.*np.sqrt(np.log(2.))*(x - param['rv'])/param['FWHM'] +  1j*param['a_damp']
     
     #Voigt profile
     voigt_peak = special.wofz(1j*param['a_damp']).real
@@ -162,7 +162,7 @@ def gauss_herm_lin(param,x,args=None):
         TBD
         
     """    
-    x_tab = (2.*np.sqrt(2.*np.log(2.)))*(x-param['rv' ])/param['FWHM'] 
+    x_tab = (2.*np.sqrt(2.*np.log(2.)))*(x-param['rv'])/param['FWHM'] 
     
     #Skewness and kurtosis
     skew1 = param['skewA']

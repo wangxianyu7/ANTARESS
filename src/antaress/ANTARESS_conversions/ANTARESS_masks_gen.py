@@ -54,11 +54,11 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
     mask_dic = prop_dic['mask']
 
     #Retrieve binning information
-    data_bin = dataload_npz(gen_dic['save_data_dir']+data_type_gen+'bin_data/'+gen_dic['add_txt_path'][data_type_gen]+inst+'_'+vis_det+'_'+prop_dic['dim_bin']+'_add')
+    data_bin = dataload_npz(gen_dic['save_data_dir']+data_type_gen+'bin_data/'+gen_dic['add_txt_path'][data_type_gen]+inst+'_'+vis_det+'_'+data_inst[vis_det]['type']+'_'+prop_dic['dim_bin']+'_add')
 
     #Retrieve master spectrum
     if data_bin['n_exp']>1:stop('Bin data into a single master spectrum')
-    data_mast = dataload_npz(gen_dic['save_data_dir']+data_type_gen+'bin_data/'+gen_dic['add_txt_path'][data_type_gen]+inst+'_'+vis_det+'_'+prop_dic['dim_bin']+str(0))
+    data_mast = dataload_npz(gen_dic['save_data_dir']+data_type_gen+'bin_data/'+gen_dic['add_txt_path'][data_type_gen]+inst+'_'+vis_det+'_'+data_inst[vis_det]['type']+'_'+prop_dic['dim_bin']+str(0))
 
     #Check for alignment
     if (not gen_dic['align_'+data_type_gen]) or ((data_type_gen=='DI') and (not gen_dic['align_DI'] and data_bin['sysvel']==0.)):
@@ -91,7 +91,8 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
         #---------------------------------------------------------------------------------------------------------------------
         #Telluric contamination
         if data_dic['DI']['mask']['verbose']:print('           Mean telluric spectrum')
-        tell_spec = np.zeros(nspec,dtype=float) if data_inst['tell_sp'] else None
+        if gen_dic['corr_tell']:tell_spec = np.zeros(nspec,dtype=float)
+        else:tell_spec = None
         specdopshift_receiver_Earth_inbin = []
         nexp_in_bin = np.zeros(nspec,dtype=float) 
         for vis_bin in data_bin['vis_iexp_in_bin']:
@@ -118,7 +119,7 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
                 specdopshift_earth_receiver = 1./(gen_specdopshift(data_prop[inst][vis_bin]['BERV'][iexp_orig])*(1.+1.55e-8)*gen_specdopshift(-data_align_comp['rv_starbar_solbar'])*gen_specdopshift(-data_align_comp['star_starbar'][iexp_orig]))
                 if (data_type_gen=='Intr'):specdopshift_earth_receiver *= 1./gen_specdopshift(-data_align_comp['surf_star'][iexp])
                 specdopshift_receiver_Earth_inbin+=[1./specdopshift_earth_receiver]
-                if data_inst['tell_sp']:
+                if tell_spec is not None:
                     
                     #Retrieve the 1D telluric spectrum associated with the exposure
                     #    - we retrieve the spectrum associated with the 1D exposure before it was binned
@@ -137,7 +138,7 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
                     nexp_in_bin[cond_def_tell]+=1.
 
         #Average telluric spectrum
-        if data_inst['tell_sp']:
+        if tell_spec is not None:
             cond_def_tell = nexp_in_bin>0.
             tell_spec[cond_def_tell]/=nexp_in_bin[cond_def_tell]
             tell_spec[~cond_def_tell] = 1.

@@ -297,8 +297,8 @@ def loc_prof_est(input_nbook):
     return None
 
 def diff_prof_corr(input_nbook):
-    input_nbook['settings']['gen_dic']['diff_data_corr']=True
-    input_nbook['settings']['gen_dic']['calc_diff_data_corr']=True
+    input_nbook['settings']['gen_dic']['diff_prof_est']=True
+    input_nbook['settings']['gen_dic']['calc_diff_prof_est']=True
     input_nbook['par']['diff_prof_corr'] = True
     return None
 
@@ -524,9 +524,9 @@ def ana_jointcomm(input_nbook,data_type,ana_type):
     if ('priors' in input_nbook['par']):input_nbook['par'].pop('priors')
     
     #Walkers
-    if ('walkers_set' in input_nbook['par']):
-        input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['walkers_set']=deepcopy(input_nbook['par']['walkers_set'])
-        input_nbook['par'].pop('walkers_set')  
+    if ('sampler_set' in input_nbook['par']):
+        input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['sampler_set']=deepcopy(input_nbook['par']['sampler_set'])
+        input_nbook['par'].pop('sampler_set')  
         
     #Save chains by default
     input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['save_MCMC_chains']='png' 
@@ -593,7 +593,7 @@ def tell_corr(input_nbook):
         input_nbook['settings']['gen_dic']['calc_corr_tell']=input_nbook['sp_reduc']['calc_tell']
     
         input_nbook['settings']['gen_dic']['tell_species']    =input_nbook['sp_reduc']['tell_species']
-        input_nbook['settings']['gen_dic']['tell_thresh_corr']=input_nbook['sp_reduc']['tell_thresh']
+        input_nbook['settings']['gen_dic']['tell_depth_thresh']=input_nbook['sp_reduc']['tell_thresh']
     return None
 
 def fbal_corr(input_nbook):

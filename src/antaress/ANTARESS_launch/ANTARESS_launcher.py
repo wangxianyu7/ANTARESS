@@ -4,16 +4,22 @@ import os as os_system
 import argparse
 import json
 import logging
+from copy import deepcopy
+from os import makedirs
+from os.path import exists as path_exist
+import glob
+import shutil
 #The following relative imports are necessary to create an executable command
 from ..ANTARESS_process.ANTARESS_main import ANTARESS_main,ANTARESS_settings_overwrite
 from ..ANTARESS_launch.ANTARESS_gridrun import ANTARESS_gridrun
-from ..ANTARESS_general.utils import import_module
- 
+from ..ANTARESS_general.utils import import_module,stop,dataload_npz,datasave_npz 
 
 def ANTARESS_launcher(sequence = '' , custom_systems = '',custom_settings = '',custom_plot_settings = '',working_path='',nbook_dic = {} , exec_comm = True):
     r"""**ANTARESS launch routine.**
     
     Runs ANTARESS with default or manual settings.  
+    
+    This routine can be called directly from a python environment, or from the terminal.
     
     Args:
         sequence (str): name of custom sequence (default "": default settings are used)        
@@ -27,7 +33,7 @@ def ANTARESS_launcher(sequence = '' , custom_systems = '',custom_settings = '',c
         None
     
     """ 
-    
+
     #Suppress log messages from the fontTools package
     fontTools_logger = logging.getLogger('fontTools')
     fontTools_logger.addHandler(logging.NullHandler())
@@ -109,6 +115,13 @@ def ANTARESS_launcher(sequence = '' , custom_systems = '',custom_settings = '',c
     print('****************************************')
     print('')
     
+    #Sequence
+    if len(sequence)>0:
+        if sequence=='st_master_tseries':txt_seq = 'computation of stellar master from time-series'
+        elif sequence=='night_proc':txt_seq = 'processing of NIGHT data'        
+        print('Sequence : '+txt_seq)        
+        print('')
+
     #Moving to code directory
     os_system.chdir(code_dir)
 
@@ -128,6 +141,131 @@ def ANTARESS_launcher(sequence = '' , custom_systems = '',custom_settings = '',c
 
 
 
+def ANTARESS_DACE_launcher(star_name,inst,sub_inst,data_path,working_path,debug_mode = False,del_dir = True):
+    r"""**ANTARESS launch routine: master computation**
+    
+    Runs ANTARESS on a S2D dataset to generate 2D and 1D master spectra with minimal inputs. 
+    The masters are aligned in the stellar rest frame.
+    
+    This routine can be called directly from a python environment.
+    To generate a single master with minimal input, you can also run the workflow from the terminal as:: 
+        
+        antaress --sequence st_master_tseries --custom_settings ANTARESS_settings_sequence.py
+        
+    Using a copy of the default configuration file where the only fields that need to be modified are `gen_dic['type']` with your chosen instrument, and `gen_dic['data_dir_list']` pointing to your data directory.  
+    
+    Args:
+        star_name (str): name of the star (to be saved in the master outputs, not critical to the computation)
+        inst (str): name of the instrument used to acquire the dataset
+        sub_inst (str): name of the sub-instrument used to acquire the dataset
+        data_path (str): path to the dataset directory
+        working_path (str): path to the directory where ANTARESS outputs are stored
+    
+    Returns:
+        None
+    
+    """
 
+    #Default settings file  
+    code_dir = os_system.path.dirname(__file__).split('ANTARESS_launch')[0]
+    default_settings_file = code_dir+'ANTARESS_launch/ANTARESS_settings.py'
+    with open(default_settings_file,'r') as file:settings_lines_default = file.readlines()
 
+    #-------------
 
+    #Modifying settings file
+    #    - defining settings files:
+    # + for dataset reduction, 2D processing, and computation of 2D master spectrum
+    # + for computation of 1D master spectrum using reduced products    
+    settings_lines_reduc2D = deepcopy(settings_lines_default)
+    settings_lines_master1D = deepcopy(settings_lines_default)
+    for idx_line, line in enumerate(settings_lines_default):
+        arr_line = line.split()
+        
+        #Input data type        
+        if ("gen_dic['type']={}" in arr_line):
+            settings_lines_reduc2D[idx_line] = '    '+"gen_dic['type'] = {'"+inst+"':'spec2D'}" + '\n'
+            settings_lines_master1D[idx_line] = settings_lines_reduc2D[idx_line]
+
+        #Paths to data directory
+        if ("gen_dic['data_dir_list']={}" in arr_line):
+            settings_lines_reduc2D[idx_line] = '    '+"gen_dic['data_dir_list'] = {'"+inst+"':{'all':'"+data_path+"'}}" + '\n'
+            settings_lines_master1D[idx_line] = settings_lines_reduc2D[idx_line]
+            
+        #Deactive 2D/1D conversion for 2D master computation
+        if ("gen_dic['spec_1D_DI']=True" in arr_line):settings_lines_reduc2D[idx_line] = '        '+"gen_dic['spec_1D_DI'] = False" + '\n'  
+        
+        #Deactivation of modules for 1D master computation
+        #    - to avoid reprocessing the 2D data
+        if ("gen_dic['calc_proc_data']=True" in arr_line):  settings_lines_master1D[idx_line] = '    '+"gen_dic['calc_proc_data'] = False" + '\n'    
+        if ("gen_dic['calc_gcal']=True" in arr_line):       settings_lines_master1D[idx_line] = '    '+"gen_dic['calc_gcal'] = False" + '\n'            
+        if ("gen_dic['calc_corr_tell']=True" in arr_line):  settings_lines_master1D[idx_line] = '    '+"gen_dic['calc_corr_tell'] = False" + '\n'     
+        if ("gen_dic['calc_glob_mast']=True" in arr_line):  settings_lines_master1D[idx_line] = '    '+"gen_dic['calc_glob_mast'] = False" + '\n'     
+        if ("gen_dic['calc_corr_Fbal']=True" in arr_line):  settings_lines_master1D[idx_line] = '    '+"gen_dic['calc_corr_Fbal'] = False" + '\n'     
+        if ("gen_dic['calc_cosm']=True" in arr_line):       settings_lines_master1D[idx_line] = '    '+"gen_dic['calc_cosm'] = False" + '\n'     
+        if ("gen_dic['calc_align_DI']=True" in arr_line):   settings_lines_master1D[idx_line] = '    '+"gen_dic['calc_align_DI'] = False" + '\n'  
+        if ("gen_dic['calc_flux_sc']=True" in arr_line):    settings_lines_master1D[idx_line] = '    '+"gen_dic['calc_flux_sc'] = False" + '\n'              
+        if ("gen_dic['calc_DImast']=True" in arr_line):     settings_lines_master1D[idx_line] = '    '+"gen_dic['calc_DImast'] = False" + '\n'         
+        
+        #Test settings
+        if debug_mode:               
+            if ("gen_dic['calc_proc_data']=True" in arr_line):  settings_lines_reduc2D[idx_line] = '    '+"gen_dic['calc_proc_data'] = False" + '\n'    
+            # if ("gen_dic['del_orders']={}" in arr_line):        settings_lines_reduc2D[idx_line] = '    '+"gen_dic['del_orders']={'ESPRESSO':np.append(np.arange(0,130),np.arange(160,170))}" + '\n'    
+            if ("gen_dic['calc_gcal']=True" in arr_line):       settings_lines_reduc2D[idx_line] = '    '+"gen_dic['calc_gcal'] = False" + '\n'            
+            if ("gen_dic['calc_corr_tell']=True" in arr_line):  settings_lines_reduc2D[idx_line] = '    '+"gen_dic['calc_corr_tell'] = False" + '\n'     
+            if ("gen_dic['calc_glob_mast']=True" in arr_line):  settings_lines_reduc2D[idx_line] = '    '+"gen_dic['calc_glob_mast'] = False" + '\n'     
+            if ("gen_dic['calc_corr_Fbal']=True" in arr_line):  settings_lines_reduc2D[idx_line] = '    '+"gen_dic['calc_corr_Fbal'] = False" + '\n'     
+            if ("gen_dic['calc_cosm']=True" in arr_line):       settings_lines_reduc2D[idx_line] = '    '+"gen_dic['calc_cosm'] = False" + '\n'      
+            if ("gen_dic['calc_align_DI']=True" in arr_line):   settings_lines_reduc2D[idx_line] = '    '+"gen_dic['calc_align_DI'] = False" + '\n'  
+            if ("gen_dic['calc_flux_sc']=True" in arr_line):    settings_lines_reduc2D[idx_line] = '    '+"gen_dic['calc_flux_sc'] = False" + '\n'              
+            if ("gen_dic['calc_DImast']=True" in arr_line):     settings_lines_reduc2D[idx_line] = '    '+"gen_dic['calc_DImast'] = False" + '\n'           
+            # if ("gen_dic['calc_DIbin']=True" in arr_line):      settings_lines_reduc2D[idx_line] = '    '+"gen_dic['calc_DIbin'] = False" + '\n'        
+            if ("gen_dic['calc_spec_1D_DI']=True" in arr_line): settings_lines_master1D[idx_line] = '        '+"gen_dic['calc_spec_1D_DI'] = False" + '\n' 
+            if ("gen_dic['calc_DIbin']=True" in arr_line):      settings_lines_master1D[idx_line] = '    '+"gen_dic['calc_DIbin'] = False" + '\n'               
+
+    #-------------
+    #Reduction and 2D master spectrum
+    
+    #Saving modified settings files
+    with open(working_path + "ANTARESS_settings_st_master_tseries_reduc2D.py", 'w') as file:
+        file.writelines(settings_lines_reduc2D)
+
+    #Calling ANTARESS
+    ANTARESS_launcher(sequence = 'st_master_tseries' , working_path = working_path , custom_settings = 'ANTARESS_settings_st_master_tseries_reduc2D.py' ,exec_comm=False)
+
+    #-------------
+    #1D master spectrum
+    
+    #Saving modified settings files
+    with open(working_path + "ANTARESS_settings_st_master_tseries_master1D.py", 'w') as file:
+        file.writelines(settings_lines_master1D)
+
+    #Calling ANTARESS
+    ANTARESS_launcher(sequence = 'st_master_tseries' , working_path = working_path , custom_settings = 'ANTARESS_settings_st_master_tseries_master1D.py' ,exec_comm=False)
+
+    #-------------
+    #Retrieve and store relevant files
+    
+    #Create storage directory
+    store_dir = working_path+'/'+star_name+'/'+sub_inst+'/'
+    if (not path_exist(store_dir)):makedirs(store_dir) 
+    
+    #Open master files
+    master2D = dataload_npz(glob.glob(working_path+'/Star_tseries/Saved_data/DIbin_data/ESPRESSO_all_spec2D_time0.npz')[0].split('.npz')[0])    
+    master1D = dataload_npz(glob.glob(working_path+'/Star_tseries/Saved_data/DIbin_data/ESPRESSO_all_spec1D_time0.npz')[0].split('.npz')[0])
+
+    #Store complementary information
+    master2D['star_name'] = star_name
+    master1D['star_name'] = star_name
+    
+    #Save masters in storage directory
+    datasave_npz(store_dir+'Master2D',master2D)  
+    datasave_npz(store_dir+'Master1D',master1D)
+    
+    #Move plots
+    os_system.rename(glob.glob(working_path+'/Star_tseries/Plots/Binned_DI_data/ESPRESSO_all_Indiv/Data/Spec_time/idx0_out0_time*')[0],store_dir+'Master1D_plot.pdf')
+
+    #Delete ANTARESS outputs
+    if del_dir:shutil.rmtree(working_path+'/Star_tseries/', ignore_errors=True)
+    
+    return None

@@ -10,6 +10,7 @@ from pathos.multiprocessing import Pool
 from numpy.polynomial import Polynomial
 import bindensity as bind
 import os as os_system
+from os.path import exists as path_exist
 from ..ANTARESS_conversions.ANTARESS_binning import sub_calc_bins,sub_def_bins
 from ..ANTARESS_analysis.ANTARESS_inst_resp import return_resolv
 from ..ANTARESS_general.utils import dataload_npz,np_where1D,stop,init_parallel_func,check_data,def_edge_tab,gen_specdopshift,datasave_npz
@@ -240,19 +241,19 @@ def calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic,data_prop):
                                     gcal_exp_all[vis][iexp,iord,cond_undef_blaze_exp[iord]] = cal_piecewise_func(cal_inputs_iexp_glob[iord]['par'],data_all_temp[iexp]['cen_bins'][iord,cond_undef_blaze_exp[iord]],args=cal_inputs_iexp_glob[iord]['args'])[0] 
                                     
                             #Saving if weighing is required
-                            if gen_dic['cal_weight']:
+                            if data_inst['cal_weight']:
                                 data_gcal_exp = dataload_npz(data_vis['sing_gcal_DI_data_paths'][iexp])
                                 data_gcal_exp['gcal'] = gcal_exp_all[vis][iexp]
                                 datasave_npz(data_vis['sing_gcal_DI_data_paths'][iexp],data_gcal_exp) 
                             
-                            #Deleting if weighing is not required 
-                            else:os_system.remove(data_vis['sing_gcal_DI_data_paths'][iexp]) 
+                            #Deleting if weighing is not required or if plots are not required
+                            elif ((not gen_dic['cond_plot_gcal']) and (path_exist(data_vis['sing_gcal_DI_data_paths'][iexp]+'.npz'))):
+                                os_system.remove(data_vis['sing_gcal_DI_data_paths'][iexp]+'.npz') 
                             
-    
                         #From calibration profile estimate
                         #    - we use the model only to avoid the spurious features in the estimated profile
                         #    - only calculated for weighing, as the model is directly recomputed on a common grid to define the scaling profile
-                        elif gen_dic['cal_weight']:
+                        elif data_inst['cal_weight']:
                             for iord in range(data_inst['nord']):
                                 gcal_exp_all[vis][iexp][iord] = cal_piecewise_func(cal_inputs_iexp_glob[iord]['par'],data_all_temp[iexp]['cen_bins'][iord],args=cal_inputs_iexp_glob[iord]['args'])[0] 
     
@@ -260,8 +261,9 @@ def calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic,data_prop):
                             datasave_npz(data_vis['sing_gcal_DI_data_paths'][iexp],{'gcal':gcal_exp_all[vis][iexp]}) 
 
                 data_all_temp.clear()
-
-
+                if gcal_blaze_vis and (not data_inst['cal_weight']) and (not gen_dic['cond_plot_gcal']) and ('sing_gcal_DI_data_paths' in data_vis):
+                    data_vis.pop('sing_gcal_DI_data_paths')
+                    
             #Storing best-fit calibration parameters
             cal_inputs_dic[vis] = np.zeros([data_dic[inst]['nord'],n_glob_groups],dtype=object)
             for iord in range(data_dic[inst]['nord']): 

@@ -13,7 +13,7 @@ from ..ANTARESS_grids.ANTARESS_occ_grid import sub_calc_plocc_ar_prop,up_plocc_a
 from ..ANTARESS_grids.ANTARESS_prof_grid import gen_theo_intr_prof,theo_intr2loc,custom_DI_prof,init_st_intr_prof
 from ..ANTARESS_analysis.ANTARESS_inst_resp import get_FWHM_inst,resamp_st_prof_tab,def_st_prof_tab,conv_st_prof_tab,cond_conv_st_prof_tab,convol_prof
 from ..ANTARESS_grids.ANTARESS_star_grid import up_model_star
-from ..ANTARESS_conversions.ANTARESS_binning import weights_bin_prof
+from ..ANTARESS_conversions.ANTARESS_binning import weights_bin_prof,weights_bin_prof_calc
 from ..ANTARESS_analysis.ANTARESS_model_prof import polycoeff_def
 from ..ANTARESS_corrections.ANTARESS_detrend import detrend_prof_gen_mul,detrend_prof_gen_add
 
@@ -133,9 +133,9 @@ def main_joined_DIProp(rout_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
                 #Fit tables
                 idx_fit2vis[inst][vis] = range(fit_dic['nx_fit'],fit_dic['nx_fit']+fixed_args['nexp_fit_all'][inst][vis])
                 fit_dic['nx_fit']+=fixed_args['nexp_fit_all'][inst][vis]
-                for i_in in fixed_args['idx_in_fit'][inst][vis]:    
-                    fixed_args['y_val'] = np.append(fixed_args['y_val'],data_load[i_in][fixed_args['prop_fit']])
-                    fixed_args['s_val'] = np.append(fixed_args['s_val'],np.mean(data_load[i_in]['err_'+fixed_args['prop_fit']]))
+                for iexp in fixed_args['idx_in_fit'][inst][vis]:    
+                    fixed_args['y_val'] = np.append(fixed_args['y_val'],data_load[iexp][fixed_args['prop_fit']])
+                    fixed_args['s_val'] = np.append(fixed_args['s_val'],np.mean(data_load[iexp]['err_'+fixed_args['prop_fit']]))
                 
                 #Scaling variance
                 fixed_args['s_val']*=np.sqrt(fixed_args['sc_var'])
@@ -1074,7 +1074,7 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     fit_save={'idx_trim_kept':{}}
 
     #Define master-out dictionary
-    for key in ['multivisit_list','idx_in_master_out','master_out_tab','scaled_data_paths','gcal','multivisit_weights_total','weights','flux','multivisit_flux']:fixed_args['master_out'][key]={}
+    for key in ['multivisit_list','idx_in_master_out','master_out_tab','scaled_data_paths','sing_gcal','multivisit_weights_total','weights','flux','multivisit_flux','EFsc2','calc_cond']:fixed_args['master_out'][key]={}
     fixed_args['raw_DI_profs']={}
 
     #Profile generation
@@ -1119,15 +1119,16 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
 
         fixed_args['master_out']['idx_in_master_out'][inst]={}
         fixed_args['raw_DI_profs'][inst]={}
+        fixed_args['master_out']['calc_cond'][inst]={}
         fixed_args['master_out']['weights'][inst]={}
         fixed_args['master_out']['flux'][inst]={}
         fixed_args['master_out']['scaled_data_paths'][inst]={}
-        fixed_args['master_out']['gcal'][inst]={}
+        fixed_args['master_out']['sing_gcal'][inst]={}
+        fixed_args['master_out']['EFsc2'][inst]={}
         fixed_args['idx_out'][inst]={}
         fixed_args['idx_in'][inst]={}
         
         if (inst not in fixed_args['ref_pl']) and (fixed_args['ref_pl']!={}):fixed_args['ref_pl'][inst]={}
-          
         for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','cond_def_cont_all','flux_cont_all','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
         if len(fit_prop_dic['PC_model'])>0:fixed_args['eig_res_matr'][inst]={}
         fit_save['idx_trim_kept'][inst] = {}
@@ -1152,6 +1153,10 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
         for multivisit in fixed_args['master_out']['multivisit_list'][inst]:
             if multivisit not in data_dic[inst]['visit_list']:stop('Problem: '+multivisit+' was selected for master-out calculation but is not used in the fit.')
 
+        #Initializing weight calculation conditions
+        calc_EFsc2,calc_var_ref2,calc_flux_sc_all,var_key_def = weights_bin_prof_calc('DI','DI',gen_dic,data_dic,inst)   
+        fixed_args['master_out']['calc_cond'][inst] = (calc_EFsc2,calc_var_ref2,calc_flux_sc_all)
+    
         #Processing visit
         for vis_index, vis in enumerate(data_dic[inst]['visit_list']):
             init_joined_routines_vis(inst,vis,fit_dic,fixed_args)
@@ -1174,9 +1179,10 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
 
                 #Needed for weight calculation
                 fixed_args['master_out']['scaled_data_paths'][inst][vis]={}
-                if gen_dic['flux_sc']:fixed_args['master_out']['scaled_data_paths'][inst][vis] = data_dic[inst][vis]['scaled_DI_data_paths']
+                if gen_dic['flux_sc'] and calc_flux_sc_all:fixed_args['master_out']['scaled_data_paths'][inst][vis] = data_dic[inst][vis]['scaled_DI_data_paths']
                 else:fixed_args['master_out']['scaled_data_paths'][inst][vis] = None
-                fixed_args['master_out']['gcal'][inst][vis]={}
+                fixed_args['master_out']['sing_gcal'][inst][vis]={}
+                fixed_args['master_out']['EFsc2'][inst][vis]={}
 
                 #Define in and out of transit exposures - needed for profile generation
                 fixed_args['idx_out'][inst][vis]=gen_dic[inst][vis]['idx_out']
@@ -1225,11 +1231,12 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                 #    - models must be calculated over the full, continuous spectral tables to allow for convolution
                 #      the fit is then performed on defined pixels only
                 for key in ['dcen_bins','cen_bins','edge_bins','flux','cov','cond_def']:fixed_args[key][inst][vis]=np.zeros(fixed_args['nexp_fit_all'][inst][vis],dtype=object)
-                for isub,i_in in enumerate(fixed_args['idx_in_fit'][inst][vis]):
+                if (data_dic[inst][vis]['type']=='spec2D') and calc_EFsc2 and ('sing_gcal_DI_data_paths' not in data_dic[inst][vis]):stop('ERROR : weighing calibration profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_gcal"] when running this module.')  
+                for isub,iexp in enumerate(fixed_args['idx_in_fit'][inst][vis]):
 
                     #Upload latest processed differential data
-                    if fixed_args['bin_mode'][inst][vis]=='_bin':data_exp = dataload_npz(gen_dic['save_data_dir']+'Diffbin_data/'+inst+'_'+vis+'_phase'+str(i_in))               
-                    else:data_exp = dataload_npz(data_dic[inst][vis]['proc_Diff_data_paths']+str(i_in))
+                    if fixed_args['bin_mode'][inst][vis]=='_bin':data_exp = dataload_npz(gen_dic['save_data_dir']+'Diffbin_data/'+inst+'_'+vis+'_phase'+str(iexp))               
+                    else:data_exp = dataload_npz(data_dic[inst][vis]['proc_Diff_data_paths']+str(iexp))
 
                     #Initialization
                     if isub==0:
@@ -1268,8 +1275,13 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                     fixed_args['cov'][inst][vis][isub] = data_exp['cov'][iord_sel][:,idx_range_kept]
 
                     #Calibration profile for weighing    
-                    if data_dic[inst][vis]['type']=='spec2D':fixed_args['master_out']['gcal'][inst][vis][isub] = dataload_npz(data_dic[inst][vis]['sing_gcal_Diff_data_paths'][i_in])['sing_gcal'][iord_sel,idx_range_kept]
-                    else: fixed_args['master_out']['gcal'][inst][vis][isub] = None
+                    if (data_dic[inst][vis]['type']=='spec2D') and calc_EFsc2:fixed_args['master_out']['sing_gcal'][inst][vis][isub] = dataload_npz(data_dic[inst][vis]['sing_gcal_DI_data_paths'][iexp])['sing_gcal'][iord_sel,idx_range_kept]
+                    else:fixed_args['master_out']['sing_gcal'][inst][vis][isub] = None
+                    
+                    #Estimate of true variance for DI profiles
+                    #    - relevant (and defined) if 2D profiles were converted into 1D
+                    if var_key_def=='EFsc2':fixed_args['master_out']['EFsc2'][inst][vis][isub] = dataload_npz(data_dic[inst][vis]['EFsc2_DI_data_paths'][iexp])['var'][iord_sel,idx_range_kept]  
+                    else:fixed_args['master_out']['EFsc2'][inst][vis][isub] = None                    
 
                     #Oversampled line profile model table
                     if fixed_args['resamp']:resamp_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,fixed_args['nexp_fit_all'][inst][vis],theo_dic['rv_osamp_line_mod'])
@@ -1281,12 +1293,12 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                     if len(fit_prop_dic['fit_range'][inst][vis])==0:fixed_args['cond_fit'][inst][vis][isub] = True  
                     else:
                         for bd_int in fit_prop_dic['fit_range'][inst][vis]:
-                            fit_dic[inst][vis]['cond_fit'][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])
+                            fixed_args['cond_fit'][inst][vis][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])
 
                     #Accounting for undefined pixels
                     fixed_args['cond_def_cont_all'][inst][vis][isub] &= fixed_args['cond_def'][inst][vis][isub]           
                     fixed_args['cond_fit'][inst][vis][isub]&= fixed_args['cond_def'][inst][vis][isub]          
-                    fit_dic['nx_fit']+=np.sum(fit_dic[inst][vis]['cond_fit'][isub])
+                    fit_dic['nx_fit']+=np.sum(fixed_args['cond_fit'][inst][vis][isub])
 
                     #Setting constant error
                     if fixed_args['cst_err']:
@@ -1300,16 +1312,16 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                     if fixed_args['n_pc'][inst][vis] is not None:
                     
                         #PC matrix interpolated on current exposure table
-                        fixed_args['eig_res_matr'][inst][vis][i_in] = np.zeros([fixed_args['n_pc'][inst][vis],fixed_args['ncen_bins'][inst][vis]],dtype=float)
+                        fixed_args['eig_res_matr'][inst][vis][iexp] = np.zeros([fixed_args['n_pc'][inst][vis],fixed_args['ncen_bins'][inst][vis]],dtype=float)
                     
                         #Process each PC
                         for i_pc in range(fixed_args['n_pc'][inst][vis]):
                             
                             #PC profile
-                            fixed_args['eig_res_matr'][inst][vis][i_in][i_pc] = interp1d(data_pca['cen_bins'],data_pca['eig_res_matr'][i_pc],fill_value='extrapolate')(fixed_args['cen_bins'][inst][vis][isub])       
+                            fixed_args['eig_res_matr'][inst][vis][iexp][i_pc] = interp1d(data_pca['cen_bins'],data_pca['eig_res_matr'][i_pc],fill_value='extrapolate')(fixed_args['cen_bins'][inst][vis][isub])       
                             
                             #PC free amplitude
-                            pc_name = 'aPC_idxin'+str(i_in)+'_ord'+str(i_pc)+'__IS'+inst+'_VS'+vis
+                            pc_name = 'aPC_idxin'+str(iexp)+'_ord'+str(i_pc)+'__IS'+inst+'_VS'+vis
                             fit_dic['mod_prop'][pc_name]={'vary':True,'guess':0.} 
                             if i_pc==0:fit_dic['mod_prop'][pc_name]['bd'] = [-4.,4.]
                             elif i_pc==1:fit_dic['mod_prop'][pc_name]['bd'] = [-3.,2.]
@@ -1360,7 +1372,7 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
 
             #Defining flux table
             fixed_args['master_out']['flux'][inst][vis]=np.zeros([len(fixed_args['master_out']['master_out_tab']['cen_bins'])], dtype=float)
-         
+
             #Continuum common to all processed profiles within visit
             #    - collapsed along temporal axis
             cond_cont_com  = np.all(fixed_args['cond_def_cont_all'][inst][vis],axis=0)
@@ -1377,8 +1389,7 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                 cont_intr[isub] = np.sum(fixed_args['flux'][inst][vis][isub][cond_cont_com]*fixed_args['dcen_bins'][inst][vis][isub][cond_cont_com])/dw_sum
                 wcont_intr[isub] = dw_sum**2./np.sum(fixed_args['cov'][inst][vis][isub][0,cond_cont_com]*fixed_args['dcen_bins'][inst][vis][isub][cond_cont_com]**2.)
             fixed_args['flux_cont_all'][inst][vis]=np.nansum(cont_intr*wcont_intr)/np.nansum(wcont_intr)
-            
-         
+
     #Artificial observation table
     #    - covariance condition is set to False so that chi2 values calculated here are not further modified within the residual() function
     #    - unfitted pixels are removed from the chi2 table passed to residual() , so that they are then summed over the full tables
@@ -1437,10 +1448,10 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     #    - with same structure as fit to individual profiles 
     fit_save.update({'p_final':p_final,'coeff_line_dic':coeff_line_dic,'model':fixed_args['model'],'name_prop2input':fixed_args['name_prop2input'],'coord_line':fixed_args['coord_line'],'merit':fit_dic['merit'],
                      'pol_mode':fit_prop_dic['pol_mode'],'coeff_ord2name':fixed_args['coeff_ord2name'],'idx_in_fit':fixed_args['idx_in_fit'],'genpar_instvis':fixed_args['genpar_instvis'],'linevar_par':fixed_args['linevar_par'],
-                     'ph_fit':fixed_args['ph_fit'], 'system_prop':fixed_args['system_prop'], 'system_actreg_prop':fixed_args['system_actreg_prop'], 'grid_dic':fixed_args['grid_dic'],
+                     'ph_fit':fixed_args['ph_fit'], 'system_prop':fixed_args['system_prop'], 'system_ar_prop':fixed_args['system_ar_prop'], 'grid_dic':fixed_args['grid_dic'],
                      'var_par_list':fixed_args['var_par_list'],'fit_orbit':fixed_args['fit_orbit'], 'fit_RpRs':fixed_args['fit_RpRs'], 'fit_star_ar':fixed_args['fit_star_ar'], 'fit_star_pl':fixed_args['fit_star_pl'],
                      'master_out':fixed_args['master_out'], 'unthreaded_op':fixed_args['unthreaded_op'], 'ref_pl':fixed_args['ref_pl'], 'fit_order':fit_prop_dic['fit_order'], 'fit_mode':fit_prop_dic['fit_mode'],
-                     'fit_actreg':fixed_args['fit_actreg'], 'fit_actreg_ang':fixed_args['fit_actreg_ang'], 'chi2_storage':fixed_args['chi2_storage']})
+                     'fit_ar':fixed_args['fit_ar'], 'fit_ar_ang':fixed_args['fit_ar_ang'], 'chi2_storage':fixed_args['chi2_storage']})
     if fixed_args['mode']=='ana':fit_save['func_prof'] = fixed_args['func_prof']
     if fit_prop_dic['fit_mode']=='chi2':fit_save['hess_matrix'] = fixed_args['hess_matrix']
     np.savez(fit_dic['save_dir']+'Fit_results',data=fit_save,allow_pickle=True)
@@ -1566,58 +1577,8 @@ def joined_DiffProf(param,fixed_args):
             #Outputs
             if not args['fit']:outputs_Prof(inst,vis,coeff_line_dic,mod_prop_dic,args,param) 
 
-            #-----------------------------------------------------------
-            #Updating flux grid if stellar grid was updated
-            if args['var_star_grid']:
-                args['Fsurf_grid_spec'] = theo_intr2loc(args['grid_dic'],args['system_prop'],args,args['ncen_bins'][inst][vis],args['grid_dic']['nsub_star'])     
-
             #Retrieve updated coordinates of planet- and active region-oculted regions or use imported values
             system_param_loc,coord_pl_ar,param_val = up_plocc_arocc_prop(inst,vis,args,param,args['studied_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis],studied_ar=args['studied_ar'][inst][vis])
-            
-            #-----------------------------------------------------------
-            #Figuring out which cells of the stellar grid are never planet-occulted or within active regions
-            #-----------------------------------------------------------
-            
-            #Initialize a 2D grid (which is going to be a 1D array) that will contain booleans telling us which stellar grid cells 
-            #are never planet-occulted or within active regions over all the exposures (True = occulted or within active regions, False = quiet)
-            args['unquiet_star'] = np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
-            # for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]): 
-            #     #Figure out which cells of the full stellar grid are planet-occulted in at least one exposure
-            #     plocced_star_grid=np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
-            #     for pl_loc in args['studied_pl'][inst][vis]:
-            #         if np.abs(coord_pl_ar[pl_loc]['ecl'][isub])!=1:
-            #             mini_pl_dic = {}
-            #             mini_pl_dic['x_orb_exp']=[coord_pl_ar[pl_loc]['st_pos'][0, isub], coord_pl_ar[pl_loc]['cen_pos'][0, isub], coord_pl_ar[pl_loc]['end_pos'][0, isub]]
-            #             mini_pl_dic['y_orb_exp']=[coord_pl_ar[pl_loc]['st_pos'][1, isub], coord_pl_ar[pl_loc]['cen_pos'][1, isub], coord_pl_ar[pl_loc]['end_pos'][1, isub]]
-            #             mini_pl_dic['RpRs']=args['system_prop']['achrom'][pl_loc][0]
-            #             if ('lambda_rad__pl'+pl_loc in args['genpar_instvis']):lamb_name = 'lambda_rad__pl'+pl_loc+'__IS'+inst+'_VS'+vis 
-            #             else:lamb_name = 'lambda_rad__pl'+pl_loc 
-            #             mini_pl_dic['lambda']=param_val[lamb_name]
-            #             pl_plocced_star_grid = calc_plocced_tiles(mini_pl_dic, args['grid_dic']['x_st_sky'], args['grid_dic']['y_st_sky'])
-            #             plocced_star_grid |= pl_plocced_star_grid
-
-            #     #Figure out which cells of the full stellar grid are spotted in at least one exposure
-            #     spotted_star_grid=np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
-            #     for spot in args['transit_sp'][inst][vis]:
-            #         if np.sum(coord_pl_ar[spot]['is_visible'][:, isub])>0:
-            #             mini_spot_dic = {}
-            #             for par_spot in args['spot_coord_par']:mini_spot_dic[par_spot] = coord_pl_ar[spot][par_spot][:, isub]
-            #             _, spot_spotted_star_grid = calc_actreged_tiles(mini_spot_dic,coord_pl_ar[spot]['ang_rad'], args['grid_dic']['x_st_sky'], args['grid_dic']['y_st_sky'], args['grid_dic']['z_st_sky'], args['grid_dic'], system_param_loc['star'])
-            #             spotted_star_grid |= spot_spotted_star_grid
-
-            #     #Figure out which cells of the full stellar grid are spotted in at least one exposure
-            #     faculaed_star_grid=np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
-            #     for facula in args['transit_fa'][inst][vis]:
-            #         if np.sum(coord_pl_ar[facula]['is_visible'][:, isub])>0:
-            #             mini_facula_dic = {}
-            #             for par_facula in args['facula_coord_par']:mini_facula_dic[par_facula] = coord_pl_ar[facula][par_facula][:, isub]
-                        # _, facula_faculaed_star_grid = calc_actreged_tiles(mini_facula_dic,coord_pl_ar[facula]['ang_rad'], args['grid_dic']['x_st_sky'], args['grid_dic']['y_st_sky'], args['grid_dic']['z_st_sky'], args['grid_dic'], system_param_loc['star'])
-            #             faculaed_star_grid |= facula_faculaed_star_grid
-
-            #     #Update the global 2D quiet star grid
-            #     #    - to be used in 'custom_DI_prof()' to calculate the base disk-integrated profile only over stellar cells that are affected by spots and planets in one of the processed exposure
-            #     #      contributions from the other cells do not need to be calculated because they are removed when computing differential profiles
-            #     args['unquiet_star'] |= (spotted_star_grid | plocced_star_grid | faculaed_star_grid)
 
             #-----------------------------------------------------------
             #Defining the base stellar profile
@@ -1647,7 +1608,7 @@ def joined_DiffProf(param,fixed_args):
                 #   with occulted cells that may be part of active regions 
                 # + the total deviation profile from active region-occulted regions, which is the difference between the quiet stellar emission and the active region emission  
                 #   cells occulted by planets do not contribute to this profile 
-                #    - occulted stellar cells (from planet and active regions) are automatically identified within sub_calc_plocc_actreg_prop() 
+                #    - occulted stellar cells (from planet and active regions) are automatically identified within sub_calc_plocc_ar_prop() 
                 surf_prop_dic,surf_prop_dic_ar,_ = sub_calc_plocc_ar_prop([args['chrom_mode']],args_exp,args['par_list'],args['studied_pl'][inst][vis],args['studied_ar'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl_ar,[isub],system_ar_prop_in=args['system_ar_prop'])
                 sp_line_model = base_DI_prof - surf_prop_dic[args['chrom_mode']]['line_prof'][:,0] - surf_prop_dic_ar[args['chrom_mode']]['line_prof'][:,0]
 
@@ -1666,6 +1627,7 @@ def joined_DiffProf(param,fixed_args):
                                 mod_prop_dic[inst][vis][ar][prop_loc][isub] = surf_prop_dic_ar[args['chrom_mode']][ar][prop_loc][0]
 
                 #Convolve model profiles to instrument resolution
+                conv_base_DI_prof = convol_prof(base_DI_prof,args_exp['cen_bins'],args['FWHM_inst'][inst])
                 conv_line_model = convol_prof(sp_line_model,args_exp['cen_bins'],args['FWHM_inst'][inst])
 
                 #Set negative flux values to null
@@ -1681,14 +1643,17 @@ def joined_DiffProf(param,fixed_args):
                     master_isub = args['master_out']['idx_in_master_out'][inst][vis].index(iexp)
 
                     #Re-sample model DI profile on a common grid
+                    resamp_conv_base_DI_prof = bind.resampling(args['master_out']['master_out_tab']['edge_bins'],args['edge_bins'][inst][vis][isub],conv_base_DI_prof,kind=args['master_out']['master_out_tab']['resamp_mode'])
                     resamp_line_model = bind.resampling(args['master_out']['master_out_tab']['edge_bins'],args['edge_bins'][inst][vis][isub],conv_line_model,kind=args['master_out']['master_out_tab']['resamp_mode'])
+                    
 
                     #Making weights for the master-out
                     #    - assuming no detector noise and a constant calibration
+                    #    - if DI profiles were converted from 2D to 1D, we use directly their variance profiles
                     raw_weights=weights_bin_prof(range(args['master_out']['nord']), args['master_out']['scaled_data_paths'][inst][vis],inst,vis,args['master_out']['corr_Fbal'],args['master_out']['corr_FbalOrd'],\
-                                                        args['master_out']['save_data_dir'],args['type'],args['master_out']['nord'],isub,'DI',args['type'],args['dim_exp'][inst][vis],args['master_out']['gcal'][inst][vis][isub],\
-                                                        None,np.array([args['cen_bins'][inst][vis][isub]]),args['coord_fit'][inst][vis]['t_dur'][isub],np.array([conv_line_model]),\
-                                                        np.array([args['cov'][inst][vis][isub]]), ref_val=base_DI_prof[0]-1, bdband_flux_sc=args['master_out']['flux_sc'])[0]
+                                                        args['master_out']['save_data_dir'],args['master_out']['nord'],isub,'DI',args['type'],args['dim_exp'][inst][vis],args['master_out']['sing_gcal'][inst][vis][isub],\
+                                                        None,np.array([args['cen_bins'][inst][vis][isub]]),args['coord_fit'][inst][vis]['t_dur'][isub],np.array([resamp_conv_base_DI_prof]),\
+                                                        None,args['master_out']['calc_cond'][inst],EFsc2_all_in = args['master_out']['EFsc2'][inst][vis][isub])[0]
 
                     # - Re-sample the weights
                     resamp_weights = bind.resampling(args['master_out']['master_out_tab']['edge_bins'],args['edge_bins'][inst][vis][isub],raw_weights,kind=args['master_out']['master_out_tab']['resamp_mode'])

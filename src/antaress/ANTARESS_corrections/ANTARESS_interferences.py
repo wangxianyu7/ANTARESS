@@ -471,33 +471,39 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         data_to_bin={'glob':{}}
                     iexp2mer = np.repeat('glob',data_vis['n_in_visit'])
 
-                #No flux scaling and master are defined at this stage for the weighing
-                #    - the wiggle master spectrum is in any case processed in the star rest frame, so that the stellar line do not contribute to weighing 
-                flux_ref = np.ones(data_vis['dim_exp'])
+                #Initializing weight calculation conditions
+                #    - no flux scaling and master are defined at this stage for the weighing
+                #    - we thus do not provide detector variance ('sdte2') below, as it requires estimating photon noise through the reference master
+                #      in that case the master is set to 1 as its contribution in the star rest frame is anyway removed when normalizing weights 
+                calc_EFsc2 = True
+                calc_var_ref2 = False
+                calc_flux_sc_all = False
+                flux_ref = np.ones(data_vis['dim_exp'])        
     
                 #Retrieving data that will be used in the fit and in the binning to calculate a master profile
                 #    - in the process_bin_prof() routine dedicated to the analysis of binned profiles, original exposures are resampled on a common table after 
                 # upload if relevant. Here the original data need to be resampled for each new exposure, thus here we just upload and store the profiles
                 #    - data is processed here in wavelength space
                 iexp_proc_list = np.unique(list(iexp_mast_list)+list(iexp_fit_list)) 
+                if calc_EFsc2 and ('sing_gcal_DI_data_paths' not in data_dic[inst][vis]):stop('ERROR : weighing calibration profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_gcal"] when running this module.')  
                 for isub_exp,iexp in enumerate(iexp_proc_list):
 
                     #Latest processed disk-integrated data and associated tables
                     #    - associated tables are defined in the same frame and over the same table as the exposure spectrum
                     data_exp = dataload_npz(data_vis['proc_DI_data_paths']+str(iexp))
                     data_glob[iexp] = {}
+                    data_glob[iexp]['dt'] = coord_dic[inst][vis]['t_dur'][iexp]
                     for key in ['cen_bins','edge_bins','flux','cond_def','cov']:data_glob[iexp][key] = data_exp[key]
-                    if data_vis['tell_sp']:data_glob[iexp]['tell'] = dataload_npz(data_dic[inst][vis]['tell_DI_data_paths'][iexp])['tell']             
+                    if gen_dic['corr_tell'] and calc_EFsc2:
+                        if ('tell_DI_data_paths' not in data_vis):stop('ERROR : weighing telluric profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_corr_tell"] when running this module.')
+                        data_glob[iexp]['tell'] = dataload_npz(data_vis['tell_DI_data_paths'][iexp])['tell']             
                     else:data_glob[iexp]['tell'] = None
-                    data_glob[iexp]['mean_gcal'] = dataload_npz(data_dic[inst][vis]['mean_gcal_DI_data_paths'][iexp])['mean_gcal']  
-                    if data_dic[inst][vis]['cal_weight']:
-                        data_gcal = dataload_npz(data_dic[inst][vis]['sing_gcal_DI_data_paths'][iexp])
-                        data_glob[iexp]['sing_gcal'] = data_gcal['gcal'] 
-                        if 'sdet2' in data_gcal:data_glob[iexp]['sdet2'] = data_gcal['sdet2'] 
-                        else:data_glob[iexp]['sdet2'] = None                
+                    data_glob[iexp]['mean_gcal'] = dataload_npz(data_vis['mean_gcal_DI_data_paths'][iexp])['mean_gcal']  
+                    if calc_EFsc2:
+                        data_gcal = dataload_npz(data_vis['sing_gcal_DI_data_paths'][iexp])
+                        data_glob[iexp]['sing_gcal'] = data_gcal['gcal']                
                     else:
-                        data_glob[iexp]['sing_gcal']=None   
-                        data_glob[iexp]['sdet2'] = None                          
+                        data_glob[iexp]['sing_gcal']=None                          
            
                     #Aligning exposures, shifting them from the solar system barycentric rest frame (source) into a common frame (receiver)
                     #      see gen_specdopshift() :            
@@ -518,12 +524,9 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         for iord in iord_fit_list: 
                             edge_bins_rest = data_glob[iexp]['edge_bins'][iord]*dopp_fact
                             data_glob[iexp]['flux'][iord],data_glob[iexp]['cov'][iord] = bind.resampling(data_com['edge_bins'][iord],edge_bins_rest, data_glob[iexp]['flux'][iord], cov = data_glob[iexp]['cov'][iord], kind=gen_dic['resamp_mode'])
-                            if data_vis['tell_sp']:data_glob[iexp]['tell'][iord] = bind.resampling(data_com['edge_bins'][iord],edge_bins_rest, data_glob[iexp]['tell'][iord] , kind=gen_dic['resamp_mode']) 
+                            if data_glob[iexp]['tell'] is not None:data_glob[iexp]['tell'][iord] = bind.resampling(data_com['edge_bins'][iord],edge_bins_rest, data_glob[iexp]['tell'][iord] , kind=gen_dic['resamp_mode']) 
                             data_glob[iexp]['mean_gcal'][iord] = bind.resampling(data_com['edge_bins'][iord],edge_bins_rest, data_glob[iexp]['mean_gcal'][iord] , kind=gen_dic['resamp_mode']) 
-                            if data_glob[iexp]['sing_gcal'] is not  None:data_glob[iexp]['sing_gcal'][iord] = bind.resampling(data_com['edge_bins'][iord],edge_bins_rest, data_glob[iexp]['sing_gcal'][iord] , kind=gen_dic['resamp_mode'])    
-                            if data_glob[iexp]['sdet2'] is not  None:
-                                data_glob[iexp]['sdet2'][iord] = bind.resampling(data_com['edge_bins'][iord],edge_bins_rest, data_glob[iexp]['sdet2'][iord] , kind=gen_dic['resamp_mode'])                           
-                                data_glob[iexp]['sdet2'][iord][np.isnan(data_glob[iexp]['sdet2'][iord])]=0.   
+                            if data_glob[iexp]['sing_gcal'] is not None:data_glob[iexp]['sing_gcal'][iord] = bind.resampling(data_com['edge_bins'][iord],edge_bins_rest, data_glob[iexp]['sing_gcal'][iord] , kind=gen_dic['resamp_mode'])     
                         data_glob[iexp]['cond_def'] = ~np.isnan(data_glob[iexp]['flux'])
                         data_glob[iexp]['edge_bins']=   data_com['edge_bins']
                         data_glob[iexp]['cen_bins'] =   data_com['cen_bins']                   
@@ -546,7 +549,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         flux_glob+= np.sum(dcen_wav[iord][cond_def[iord]])/np.sum(data_glob[iexp]['flux'][iord][cond_def[iord]]*dcen_wav[iord][cond_def[iord]])
                     for iord in iord_fit_list:
                         data_glob[iexp]['flux'][iord],data_glob[iexp]['cov'][iord] = bind.mul_array(data_glob[iexp]['flux'][iord] , data_glob[iexp]['cov'][iord],np.repeat(flux_glob,data_vis['nspec']))
-                    
+
                     #Exposures used in master calculations
                     if iexp in idx_to_bin:
                         if gen_dic['wig_merid_diff']:idmer = iexp2mer[iexp]  
@@ -554,8 +557,10 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
 
                         #Weight definition 
                         #    - at this stage of the pipeline no broadband flux scaling was applied
-                        #    - weights with at least one undefined pixels are set to 1 for all binned exposures (ie, no weighing is applied) within calc_bin_prof()    
-                        data_glob[iexp]['weight'] = weights_bin_prof(range(data_inst['nord']),None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp,'DI',data_inst['type'],data_vis['dim_exp'],data_glob[iexp]['tell'],data_glob[iexp]['sing_gcal'],data_glob[iexp]['cen_bins'],1.,flux_ref,None,glob_flux_sc=1./flux_glob,sdet_exp2=data_glob[iexp]['sdet2'])            
+                        #    - weights with at least one undefined pixels are set to 1 for all binned exposures (ie, no weighing is applied) within calc_bin_prof()   
+                        #    - data is necessarily S2D here, so there are no estimates of true variance defined
+                        data_glob[iexp]['weight'] = weights_bin_prof(range(data_inst['nord']),None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],data_inst['nord'],iexp,'DI',gen_dic['type'][inst],data_vis['dim_exp'],data_glob[iexp]['tell'],data_glob[iexp]['sing_gcal'],data_glob[iexp]['cen_bins'],data_glob[iexp]['dt'],flux_ref,None,(calc_EFsc2,calc_var_ref2,calc_flux_sc_all),
+                                                                     glob_flux_sc=1./flux_glob)[0]            
     
                         #Resampling if a common master is used
                         #    - if exposures do not share a common table they were kept on individual exposures; here we only resample those involved in the master calculation

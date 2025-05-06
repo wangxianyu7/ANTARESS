@@ -8,6 +8,9 @@ from ..ANTARESS_general.utils import stop,planck
 from ..ANTARESS_general.constant_data import G_usi,Msun,Rsun
 from ..ANTARESS_grids.ANTARESS_coord import calc_zLOS_oblate,frameconv_skystar_to_star
 
+################################################################################################################    
+#%% Radial velocity field
+################################################################################################################  
 
 def calc_RVrot(x_st_sky,y_st,istar_rad,veq,alpha_rot,beta_rot):
     r"""**Stellar rotational rv**
@@ -118,7 +121,9 @@ def calc_CB_RV(ld_coeff,LD_mod,c1_CB,c2_CB,c3_CB,star_params):
     return cb_band
 
 
-
+################################################################################################################    
+#%% Intensity field
+################################################################################################################  
 
 def calc_GD(x_grid_star,y_grid_star,z_grid_star,star_params_eff,gd_band,x_st_sky_grid,y_st_sky_grid):
     r"""**Gravity-darkening intensity**
@@ -223,7 +228,7 @@ def calc_GD(x_grid_star,y_grid_star,z_grid_star,star_params_eff,gd_band,x_st_sky
         
         #Black body flux
         #    - at star surface, but absolute flux does not matter, so we scale by a constant factor to get values around 1
-        gd_grid_star = np.sum(planck(wav_band[:,None],temp_grid_star)*dw_band,axis=0)/1e11            
+        gd_grid_star = np.sum(planck(wav_band[:,None],temp_grid_star)[0]*dw_band,axis=0)/1e11            
 
     else:
         gd_grid_star = np.ones(mu_grid_star.shape,dtype=float)
@@ -259,7 +264,7 @@ def get_LD_coeff(transit_prop,iband):
     Store input limb-darkening coefficients in common structure [LD_u1,LD_u2,LD_u3,LD_u4].
 
     Args:
-        transit_prop (dict) : dictionary containing the planet/spot limb-darkening properties.
+        transit_prop (dict) : dictionary containing the planet/active region limb-darkening properties.
         iband (int) : index of the band considered.
 
     Returns:
@@ -295,7 +300,7 @@ def get_LD_coeff(transit_prop,iband):
 def calc_LD(LD_mod,mu,ld_coeff):
     r"""**Limb-Darkening intensity**
 
-    Calculates limb-Darkening value at a given :math:`\mu`
+    Calculates limb-Darkening value at a given :math:`\mu` (from 1 at stellar center to 0 at the limb).
 
     Args:
         TBD
@@ -304,22 +309,48 @@ def calc_LD(LD_mod,mu,ld_coeff):
         TBD
     
     """   
+    
+    #Uniform emission 
     if LD_mod == 'uniform':
         ld_val = 1.
+        
+   	#Linear law
+   	#    - I(mu)=I0*(1.-c1*(1.-mu))	
     elif LD_mod == 'linear':
         ld_val = 1. - ld_coeff[0]*(1. -mu)
+       
+   	#Quadratic law
+   	#    - Kopal (1950, Harvard Col. Obs. Circ., 454, 1)
+   	#    - I(mu)=I0*(1.-c1*(1.-mu)-c2*pow(1.-mu,2.))    
     elif LD_mod == 'quadratic':
         ld_val = 1. - ld_coeff[0]*(1. -mu) - ld_coeff[1]*np.power(1. -mu,2.)
+        
     elif LD_mod == 'squareroot':
         ld_val = 1. - ld_coeff[0]*(1. -mu) - ld_coeff[1]*(1. - np.sqrt(mu))
+        
+   	#Four-parameter law
+   	#    - Claret, 2000, A&A, 363, 1081
+   	#    - I(mu)=I0*(1.-c1*(1.-sqrt(mu))-c2*(1.-mu)-c3*(1.-pow(mu,3./2.))-c4*(1.-pow(mu,2.)))    
     elif LD_mod == 'nonlinear': 
-        #Claret+2000
         ld_val = 1. - ld_coeff[0]*(1. -mu**0.5) - ld_coeff[1]*(1. -mu) - ld_coeff[2]*(1. -mu**1.5) - ld_coeff[3]*(1. -mu**2.)
+        
     elif LD_mod == 'power2':        
         ld_val = 1. - ld_coeff[0]*(1. -mu**ld_coeff[1]) 
+
+   	#Three-parameter LD law 
+   	#    - Sing et al., 2009, A&A, 505, 891
+   	#    - I(mu)=I0*(1.-c1*(1.-mu)-c2*(1.-pow(mu,3./2.))-c3*(1.-pow(mu,2.))) 
+    elif LD_mod=='LD_Sing':        
+        ld_val = 1. - ld_coeff[0]*(1.-mu)-ld_coeff[1]*(1.-mu**(3./2.))-ld_coeff[2]*(1.-mu**2.)
+        
+    #Solar law
     elif LD_mod == "Sun":        
         norm_ld = 2.*np.pi*(ld_coeff[0]/2. + ld_coeff[1]/3. - ld_coeff[2]/4. + ld_coeff[3]/5. -ld_coeff[4]/5. +ld_coeff[5]/7.)
         ld_val = (ld_coeff[0] + ld_coeff[1]*mu - ld_coeff[2]*mu**2. +ld_coeff[3]*mu**3. -ld_coeff[4]*mu**4. +ld_coeff[5]*mu**5.)/norm_ld
+        
+    else:
+        stop('ERROR: limb-darkening mode '+LD_mod+' not defined. Implement in ANTARESS_star_grid.py > calc_LD()')
+        
     return ld_val
 
 
@@ -382,7 +413,9 @@ def calc_Isurf_grid(iband_list,ngrid_star,system_prop,coord_grid,star_params_eff
 
     return ld_grid_star,gd_grid_star,mu_grid_star,Fsurf_grid_star,Ftot_star,Istar_norm
 
-
+################################################################################################################    
+#%% Stellar grid
+################################################################################################################  
 
 def calc_st_sky(coord_grid,star_params):
     r"""**Sky-projected stellar grid.**
@@ -446,7 +479,7 @@ def model_star(mode,grid_dic,grid_type,system_prop_in,nsub_Dstar,star_params_eff
     """ 
  
     #Initializing velocity grid
-    #    - if spots are accounted for, the surface rv properties will be stored as cell-dependent grids to allow distinguishing between quiet and spotted cells
+    #    - if active regions are accounted for, the surface rv properties will be stored as cell-dependent grids to allow distinguishing between quiet and active cells
     for key in ['veq','alpha_rot','beta_rot']:grid_dic[key] = star_params_eff[key]    
      
     #Updating bulk stellar grid

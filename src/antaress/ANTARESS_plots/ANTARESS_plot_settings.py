@@ -22,6 +22,8 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
      - `col_contacts = str` : color for transit contacts.
      - `axis_thick = float` : thickness for plot axis.
      - `marker` : general marker type.
+     - `markersize = float` : general marker size.
+     - `hide_axis = bool` : hide axis.     
 
     Args:
         plot_settings (dic) : dictionary for all generic plot settings
@@ -77,7 +79,7 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
     plot_options['hide_axis'] = False
     
     #Rasterize datapoints
-    plot_options['rasterized'] = True
+    plot_options['rasterized'] = False
 
     #Transparent background
     plot_options['transparent'] = False
@@ -115,7 +117,8 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
     plot_options['verbose']=True 
 
     #Plot legend figure
-    plot_options['legend']=False 
+    if key_plot in ['gcal']:plot_options['legend']=True 
+    else:plot_options['legend']=False 
     plot_options['legend_to_plot']={} 
 
     #--------------------------------------
@@ -181,11 +184,12 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
     #Reference planet for each visit
     #    - set to first transit planet if it exists, or to first planet overall otherwise
     plot_options['pl_ref']={}
-    for inst in plot_options['visits_to_plot']:
-        plot_options['pl_ref'][inst]={'binned':gen_dic['studied_pl_list'][0]}
-        for vis in plot_options['visits_to_plot'][inst]:
-            if len(data_dic[inst][vis]['studied_pl'])>0:plot_options['pl_ref'][inst][vis]=data_dic[inst][vis]['studied_pl'][0]
-            else:plot_options['pl_ref'][inst][vis]=gen_dic['studied_pl_list'][0]
+    if len(gen_dic['studied_pl_list'])>0:
+        for inst in plot_options['visits_to_plot']:
+            plot_options['pl_ref'][inst]={'binned':gen_dic['studied_pl_list'][0]}
+            for vis in plot_options['visits_to_plot'][inst]:
+                if len(data_dic[inst][vis]['studied_pl'])>0:plot_options['pl_ref'][inst][vis]=data_dic[inst][vis]['studied_pl'][0]
+                else:plot_options['pl_ref'][inst][vis]=gen_dic['studied_pl_list'][0]
 
     #Shade range not used for fitting
     plot_options['shade_unfit']=False
@@ -307,26 +311,51 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
         plot_options['plot_input']=True
         
     #--------------------------------------              
-    if (key_plot in ['Fbal_corr','Fbal_corr_vis','input_LC','plocc_ranges','prop_DI_PDFs','prop_Intr_PDFs']):
+    if ('Fbal_corr' in key_plot) or ('FbalOrd_corr' in key_plot) or (key_plot in ['input_LC','plocc_ranges','prop_DI_PDFs','prop_Intr_PDFs']):
 
         #Plot exposure indexes
         plot_options['plot_expid'] = True
         
     #--------------------------------------           
     #Flux balance options
-    if ('Fbal_corr' in key_plot):
+    if ('Fbal_corr' in key_plot) or ('FbalOrd_corr' in key_plot):
 
         #Overplot all exposures or offset them
         plot_options['gap_exp']=0.  
+            
+        #Plot reference level
+        plot_options['plot_reflev']=True
         
-        #Indexes of bins to be plotted 
-        #    - format is {inst : { vis : [idx0, idx1, ..]}
-        #      where 'idxi' are the indexes of the spectral bins used in the flux balance fit
-        #    - use this option to identify bins biasing the fit
-        plot_options['ibin_plot'] = {}        
+        #Global flux balance
+        if ('Fbal_corr' in key_plot):
+        
+            #Indexes of bins to be plotted 
+            #    - format is {inst : { vis : [idx0, idx1, ..]}
+            #      where 'idxi' are the indexes of the spectral bins used in the flux balance fit
+            #    - use this option to identify bins biasing the fit
+            plot_options['ibin_plot'] = {}        
+    
+            #Plot order indexes
+            plot_options['plot_idx_ord'] = True
 
-        #Plot order indexes
-        plot_options['plot_idx_ord'] = True
+            #Strip range used for correction
+            plot_options['strip_corr'] = False
+
+            #Model spectral resolution 
+            #    - in dlnw = dw/w
+            plot_options['dlnw_plot'] = 0.002
+            
+        #Intra-order flux balance
+        if ('FbalOrd_corr' in key_plot):            
+
+            #Model spectral resolution 
+            #    - in dlnw = dw/w
+            plot_options['dlnw_plot'] = 1e-5    
+            
+            #Abscissa range
+            #    - format : { inst : {iord : [x0,x1], ..} }
+            plot_options['x_range'] = {}          
+
 
     #--------------------------------------   
     #Binned profiles settings     
@@ -615,77 +644,70 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     
             
     
-    
         ################################################################################################################    
-        #%%%% Global flux balance (exposures)
+        #%%%% Global flux balance
+        ################################################################################################################
+
+        ################################################################################################################    
+        #%%%%% Exposures
         #    - relative to the mean level of each profile
         ################################################################################################################
         if (plot_dic['Fbal_corr']!=''):   
             key_plot = 'Fbal_corr'
     
-            #%%%%% Generic settings
+            #%%%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)         
+
     
-            #%%%%% Strip range used for correction
-            plot_settings[key_plot]['strip_corr'] = False
-    
-            #%%%%% Model spectral resolution 
-            #    - in dlnw = dw/w, if x_range is defined
-            plot_settings[key_plot]['dlnw_plot'] = 0.002
-        
-    
-        
-    
+
     
         ################################################################################################################    
-        #%%%% Global DRS flux balance (exposures)
+        #%%%%% Exposures (DRS)
         ################################################################################################################
         if (plot_dic['Fbal_corr_DRS']!=''):
             key_plot = 'Fbal_corr_DRS'
     
-            #%%%%% Generic settings
+            #%%%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
             
       
-        
-      
         ################################################################################################################    
-        #%%%% Global flux balance (visits)
+        #%%%%% Visits
         #    - relative to the mean level of each profile
         ################################################################################################################
         if (plot_dic['Fbal_corr_vis']!=''):   
             key_plot = 'Fbal_corr_vis'
     
-            #%%%%% Generic settings
+            #%%%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)         
 
-            #%%%%% Strip range used for correction
-            plot_settings[key_plot]['strip_corr'] = False
-    
-            #%%%%% Model spectral resolution 
-            #    - in dlnw = dw/w, if x_range is defined
-            plot_settings[key_plot]['dlnw_plot'] = 0.002   
-    
-        
-        
-        
         
     
         ################################################################################################################ 
         #%%%% Intra-order flux balance
         ################################################################################################################ 
-        if (plot_dic['Fbal_corr_ord']!=''):
-            key_plot = 'Fbal_corr_ord' 
+
+        ################################################################################################################ 
+        #%%%%% Exposures 
+        ################################################################################################################ 
+        if (plot_dic['FbalOrd_corr']!=''):
+            key_plot = 'FbalOrd_corr' 
     
-            #%%%%% Generic settings
+            #%%%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)          
+
+
+        ################################################################################################################ 
+        #%%%%% Visits 
+        #    - relative to the mean level of each profile
+        ################################################################################################################
+        if (plot_dic['FbalOrd_corr_vis']!=''):   
+            key_plot = 'FbalOrd_corr_vis'
     
-    
-    
-            
-            
-            
-            
+            #%%%%%% Generic settings
+            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)         
+
+
             
             
         ################################################################################################################ 
@@ -810,9 +832,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
         #%%%%% Generic settings
         plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)
-     
-        
-     
+
         
 
 
@@ -969,8 +989,20 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             ##############################################################################
             #%%%%% Profile and its fit
             if (key_plot=='DIbin'):
-                pass
 
+                #%%%%% Bin dimension
+                if gen_dic['sequence']=='st_master_tseries':plot_settings[key_plot]['dim_plot']='time'
+                
+                #%%%%% Number exposures in binned profiles
+                plot_settings[key_plot]['print_n_in_bin'] = False
+                if gen_dic['sequence']=='st_master_tseries':plot_settings[key_plot]['print_n_in_bin'] = True
+                    
+
+                #%%%%% S/R of binned profile   
+                plot_settings[key_plot]['print_SNR'] = False 
+                if gen_dic['sequence']=='st_master_tseries':plot_settings[key_plot]['print_SNR'] = True
+                            
+                    
             ##############################################################################
             #%%%%% Residuals between the profile and its fit
             if (key_plot=='DIbin_res'):
@@ -1630,7 +1662,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     ################################################################################################################  
     #%%%% Best-fit profiles 
     ################################################################################################################  
-    if gen_dic['diff_data_corr'] and (plot_dic['map_BF_Diff_prof']!=''):
+    if gen_dic['eval_bestfit'] and (plot_dic['map_BF_Diff_prof']!=''):
         key_plot = 'map_BF_Diff_prof'
 
         
@@ -1641,7 +1673,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     ################################################################################################################  
     #%%%% Residual for best-fit profiles 
     ################################################################################################################  
-    if gen_dic['diff_data_corr'] and (plot_dic['map_BF_Diff_prof_re']!=''):                                        
+    if gen_dic['eval_bestfit'] and (plot_dic['map_BF_Diff_prof_re']!=''):                                 
         key_plot = 'map_BF_Diff_prof_re'
 
         
@@ -1653,7 +1685,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     #%%%% Estimates
     ##################################################################################################
     for key_plot in ['map_Diff_prof_clean_pl_est','map_Diff_prof_clean_ar_est','map_Diff_prof_unclean_ar_est','map_Diff_prof_unclean_pl_est']:
-        if gen_dic['diff_data_corr'] and (plot_dic[key_plot]!=''):
+        if gen_dic['diff_prof_est'] and (plot_dic[key_plot]!=''):
 
             #%%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
@@ -1673,7 +1705,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     ################################################################################################################  
     #%%%% Corrected profiles 
     ################################################################################################################  
-    if gen_dic['diff_data_corr'] and (plot_dic['map_Diff_corr_ar']!=''):                                        
+    if gen_dic['corr_diff'] and (plot_dic['map_Diff_corr_ar']!=''):                                        
         key_plot = 'map_Diff_corr_ar'
 
         
@@ -2368,12 +2400,12 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         # + the mock dataset (mock_ar_prop) - from mock_dic
         # + fitted active region properties (fit_ar_prop) - from glob_fit_dic
         # + custom user-specified properties (custom_ar_prop) - parameterized below
-        # + If none of these are activated, spots will not be plotted.
+        # + If none of these are activated, active regions will not be plotted.
         plot_settings[key_plot]['mock_ar_prop'] = False
         plot_settings[key_plot]['fit_ar_prop'] = False
         plot_settings[key_plot]['custom_ar_prop'] = {}
 
-        #%%%% Path to the file storing the best-fit spot results to plot
+        #%%%% Path to the file storing the best-fit results to plot
         plot_settings[key_plot]['fit_results_file'] = ''
     
         #%%%% Overlay to the RV-colored disk a shade controlled by flux

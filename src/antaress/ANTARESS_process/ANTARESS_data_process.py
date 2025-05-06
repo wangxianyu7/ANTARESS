@@ -8,7 +8,7 @@ import pandas as pd
 import batman
 from ..ANTARESS_grids.ANTARESS_occ_grid import init_surf_shift,def_surf_shift,sub_calc_plocc_ar_prop,retrieve_ar_prop_from_param
 from ..ANTARESS_grids.ANTARESS_coord import get_timeorbit,calc_pl_coord,excl_plrange,coord_expos_ar
-from ..ANTARESS_conversions.ANTARESS_binning import init_bin_prof,weights_bin_prof,calc_bin_prof
+from ..ANTARESS_conversions.ANTARESS_binning import init_bin_prof,weights_bin_prof,calc_bin_prof,weights_bin_prof_calc
 from ..ANTARESS_process.ANTARESS_data_align import align_data
 from ..ANTARESS_general.utils import dataload_npz,gen_specdopshift,stop,np_where1D,datasave_npz,np_interp,npint,MAIN_multithread,check_data
 
@@ -17,7 +17,7 @@ from ..ANTARESS_general.utils import dataload_npz,gen_specdopshift,stop,np_where
 ################################################################################################## 
     
 #NB: cannot be put in file data_align.py with align_data() due to circular import issues
-def align_profiles(data_type,data_dic,inst,vis,gen_dic,coord_dic):
+def align_profiles(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic):
     r"""**Main alignment routine.**    
 
     Aligns time-series of disk-integrated, intrinsic, and planetary profiles.  
@@ -32,13 +32,26 @@ def align_profiles(data_type,data_dic,inst,vis,gen_dic,coord_dic):
     """     
     data_inst = data_dic[inst]  
     data_vis=data_inst[vis]
-    print('   > Aligning '+gen_dic['type_name'][data_type]+' profiles') 
-    prop_dic = data_dic[data_type]  
-    proc_gen_data_paths_new = gen_dic['save_data_dir']+'Aligned_'+data_type+'_data/'+gen_dic['add_txt_path'][data_type]+'/'+inst+'_'+vis+'_'
-    if (data_type=='DI') and (data_dic['DI']['sysvel'][inst][vis]==0.):print('         WARNING: sysvel = 0 km/s')
-    if data_type=='Intr':proc_gen_data_paths_new+='in'  
-    proc_mast = True if ((gen_dic['DImast_weight']) and (data_type in ['Intr','Atm'])) else False
-    proc_locEst = True if ((data_type=='Atm') and ((data_dic['Atm']['pl_atm_sign']=='Absorption') or ((data_dic['Atm']['pl_atm_sign']=='Emission')) and data_dic['Intr']['cov_loc_star'])) else False
+    print('   > Aligning '+gen_dic['type_name'][data_type_gen]+' profiles') 
+    if data_type_gen == 'Atm':data_type = data_dic['Atm']['pl_atm_sign']
+    else:data_type=deepcopy(data_type_gen)
+    prop_dic = data_dic[data_type_gen]  
+    proc_gen_data_paths_new = gen_dic['save_data_dir']+'Aligned_'+data_type_gen+'_data/'+gen_dic['add_txt_path'][data_type_gen]+'/'+inst+'_'+vis+'_'
+    if (data_type_gen=='DI') and (data_dic['DI']['sysvel'][inst][vis]==0.):print('         WARNING: sysvel = 0 km/s')
+    if data_type_gen=='Intr':proc_gen_data_paths_new+='in'  
+    if (data_vis['type']=='spec2D') and ('sing_gcal_'+data_type_gen+'_data_paths' not in data_vis):stop('ERROR : weighing calibration profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_gcal"] when running this module.')   
+    if (data_type_gen in ['Intr','Atm']) and ('mast_'+data_type_gen+'_data_paths'): proc_mast = True
+    else: proc_mast = False   #The master DI profiles has not yet been calculated when calling align_profiles() on DI profiles
+    proc_locEst = True if ((data_type_gen=='Atm') and ((data_type=='Absorption') or ((data_type=='Emission')) and data_dic['Intr']['cov_loc_star'])) else False
+    
+    #1D variance grid
+    #    - 1D variance profiles are defined for a given data type if it was converted from 2D to 1D, but may then be associated with later data types
+    #      we thus align variance grids from earlier data types up to the present ones, depending on when the conversion was performed    
+    var_key = None
+    for subtype_gen in gen_dic['earliertypes4var'][data_type_gen]:
+        if data_dic[subtype_gen]['spec2D_to_spec1D'][inst] and (data_vis['type']=='spec1d'):
+            var_key = gen_dic['type2var'][gen_dic['typegen2type'][subtype_gen]]
+            break
 
     #Resample aligned profiles on the common visit table if relevant
     #    - edge issues can arise when resampling profiles on the common table after they are shifted by
@@ -50,7 +63,7 @@ def align_profiles(data_type,data_dic,inst,vis,gen_dic,coord_dic):
     #      here we further shift the common table by the systemic velocity when aligning disk-integrated profiles (since it is a global shift common to all profiles)
     #      only the table needs shifting, without resampling the profiles, since the shift is common to all exposures 
     #    - even if spectra are not resampled on the common table we shift and redefined the common table so that it can be used in the shifted frame
-    if (data_type=='DI'):
+    if (data_type_gen=='DI'):
         data_star_com = dataload_npz(data_vis['proc_com_data_paths'])
 
         #Alignment mode
@@ -81,17 +94,17 @@ def align_profiles(data_type,data_dic,inst,vis,gen_dic,coord_dic):
     else:cen_bins_resamp, edge_bins_resamp , dim_exp_resamp = None,None,None   
 
     #Calculating aligned data
-    if gen_dic['calc_align_'+data_type]:
+    if gen_dic['calc_align_'+data_type_gen]:
         print('         Calculating data')
 
         #Define RV shifts
         #    - shifts are saved independently so that they can be used to account for the combined Doppler shifts
         data_comp = {'rv_starbar_solbar':data_dic['DI']['sysvel'][inst][vis]}
         idx_def = prop_dic[inst][vis]['idx_def']
-        if data_type=='DI':
+        if data_type_gen=='DI':
             data_comp['star_starbar'] = {}
             data_comp['idx_aligned'] = idx_def
-        if data_type=='Intr': 
+        if data_type_gen=='Intr': 
             data_comp['surf_star'] = {}
             
             #Surface RV 
@@ -104,12 +117,12 @@ def align_profiles(data_type,data_dic,inst,vis,gen_dic,coord_dic):
             # corrected for when extracting the intrinsic profiles
             if ('chrom' in dic_rv):dic_rv.pop('chrom')
 
-        elif data_type=='Atm': 
+        elif data_type_gen=='Atm': 
             data_comp['pl_star'] = {}
             
             #Orbital radial velocity of the planet calculated for each exposure in the star rest frame
-            if data_dic['Atm']['pl_atm_sign']=='Absorption':data_comp['idx_aligned'] = list(np.array(gen_dic[inst][vis]['idx_in'])[idx_def])
-            elif data_dic['Atm']['pl_atm_sign']=='Emission':data_comp['idx_aligned'] = idx_def
+            if data_type=='Absorption':data_comp['idx_aligned'] = list(np.array(gen_dic[inst][vis]['idx_in'])[idx_def])
+            elif data_type=='Emission':data_comp['idx_aligned'] = idx_def
             rv_shifts = coord_dic[inst][vis][data_dic['Atm']['ref_pl_align']]['rv_pl'][data_comp['idx_aligned']]
             v_orb = coord_dic[inst][vis][data_dic['Atm']['ref_pl_align']]['v_pl'][data_comp['idx_aligned']]
 
@@ -117,10 +130,10 @@ def align_profiles(data_type,data_dic,inst,vis,gen_dic,coord_dic):
         for isub,iexp in enumerate(data_comp['idx_aligned']):    
 
             #Upload latest processed data
-            data_exp = dataload_npz(data_dic[inst][vis]['proc_'+data_type+'_data_paths']+str(iexp))
+            data_exp = dataload_npz(data_dic[inst][vis]['proc_'+data_type_gen+'_data_paths']+str(iexp))
           
             #Reflex motion and systemic velocity 
-            if data_type=='DI':    
+            if data_type_gen=='DI':    
                 if data_dic['DI']['align_mode']=='kep': 
                     RV_star_stelCDM_exp = coord_dic[inst][vis]['RV_star_stelCDM'][iexp]
                     rv_shift_cen = RV_star_stelCDM_exp + data_dic['DI']['sysvel'][inst][vis]
@@ -132,45 +145,49 @@ def align_profiles(data_type,data_dic,inst,vis,gen_dic,coord_dic):
                 data_comp['star_starbar'][iexp] = RV_star_stelCDM_exp
 
             #Achromatic planet-occulted surface rv in the star rest frame
-            elif data_type=='Intr':
+            elif data_type_gen=='Intr':
                 rv_shift_cen = def_surf_shift(prop_dic['align_mode'],dic_rv,iexp,data_exp,ref_pl,data_vis['type'],data_dic['DI']['system_prop'],data_dic[inst][vis]['dim_exp'],data_dic[inst]['nord'],data_dic[inst][vis]['nspec'])[0]
                 data_comp['surf_star'][iexp] = rv_shift_cen
                 spec_dopshift = 1./gen_specdopshift(rv_shift_cen)
                 
             #Orbital radial velocity of the planet in the star rest frame
-            elif data_type=='Atm':
+            elif data_type_gen=='Atm':
                 rv_shift_cen = rv_shifts[isub]
                 data_comp['pl_star'][iexp] = rv_shifts[isub]
                 spec_dopshift = 1./gen_specdopshift(rv_shift_cen , v_s = v_orb)
                 
             #Aligning exposure profile and complementary tables
-            #    - telluric and calibration profiles must follow the same shifts as the exposure
-            #    - the calibration profile used for scaling is always defined for S2D
-            #      it is common to all exposures of a processed instrument, and is originally sampled over the table of each exposure in the detector rest frame
-            #    - the calibration profile used as weight in temporal binning, or to scale back profiles from flux to count units, is only defined if requested
-            if data_vis['tell_sp']:data_exp['tell'] = dataload_npz(data_vis['tell_'+data_type+'_data_paths'][iexp])['tell'] 
+            #    - telluric, calibration, and 1D variance profiles must follow the same shifts as the exposure
+            # + calibration profile used for scaling is always defined for S2D
+            #   it is common to all exposures of a processed instrument, and is originally sampled over the table of each exposure in the detector rest frame
+            # + calibration profile used as weight in temporal binning, or to scale back profiles from flux to count units, is only defined if requested
+            if ('spec' in data_vis['type']) and gen_dic['corr_tell']:
+                if ('tell_'+data_type_gen+'_data_paths' not in data_vis):stop('ERROR : weighing telluric profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_corr_tell"] when running this module.')
+                data_exp['tell'] = dataload_npz(data_vis['tell_'+data_type_gen+'_data_paths'][iexp])['tell'] 
             if data_vis['type']=='spec2D':
-                data_exp['mean_gcal'] = dataload_npz(data_vis['mean_gcal_'+data_type+'_data_paths'][iexp])['mean_gcal'] 
-                if data_vis['cal_weight']:
-                    data_gcal = dataload_npz(data_vis['sing_gcal_DI_data_paths'][iexp])
-                    data_exp['sing_gcal'] = data_gcal['gcal'] 
-                    if 'sdet2' in data_gcal:data_exp['sdet2'] = data_gcal['sdet2'] 
+                data_exp['mean_gcal'] = dataload_npz(data_vis['mean_gcal_'+data_type_gen+'_data_paths'][iexp])['mean_gcal'] 
+                data_gcal = dataload_npz(data_vis['sing_gcal_'+data_type_gen+'_data_paths'][iexp])
+                data_exp['sing_gcal'] = data_gcal['gcal'] 
+                if (vis in data_inst['gcal_blaze_vis']):data_exp['sdet2'] = data_gcal['sdet2'] 
+            if var_key is not None:data_exp[var_key] = dataload_npz(data_vis[var_key+'_'+data_type+'_data_paths'][iexp])['var']  
             data_align=align_data(data_exp,data_vis['type'],data_dic[inst]['nord'],dim_exp_resamp,gen_dic['resamp_mode'],cen_bins_resamp, edge_bins_resamp,rv_shift_cen,spec_dopshift)
           
             #Saving aligned exposure and complementary tables
-            if data_vis['tell_sp']:
+            if ('tell' in data_align):
                 datasave_npz(proc_gen_data_paths_new+'_tell'+str(iexp),{'tell':data_align['tell']}) 
                 data_align.pop('tell')
-            if data_vis['type']=='spec2D':
+            if ('mean_gcal' in data_align):
                 datasave_npz(proc_gen_data_paths_new+'_mean_gcal'+str(iexp),{'mean_gcal':data_align['mean_gcal']}) 
                 data_align.pop('mean_gcal')
-                if data_vis['cal_weight']:
-                    data_gcal = {'gcal':deepcopy(data_align['sing_gcal'])}
-                    data_align.pop('sing_gcal')
-                    if 'sdet2' in data_align:
-                        data_gcal['sdet2']=deepcopy(data_align['sdet2'])
-                        data_align.pop('sdet2')  
-                    datasave_npz(proc_gen_data_paths_new+'_sing_gcal'+str(iexp),data_gcal) 
+                data_gcal = {'gcal':deepcopy(data_align['sing_gcal'])}
+                data_align.pop('sing_gcal')
+                if 'sdet2' in data_align:
+                    data_gcal['sdet2']=deepcopy(data_align['sdet2'])
+                    data_align.pop('sdet2')  
+                datasave_npz(proc_gen_data_paths_new+'_sing_gcal'+str(iexp),data_gcal) 
+            if (var_key in data_align):
+                datasave_npz(proc_gen_data_paths_new+'_'+var_key+str(iexp), {'var':data_align[var_key]})          
+                data_align.pop(var_key)
             datasave_npz(proc_gen_data_paths_new+str(iexp),data_align)
 
             #Aligning weighing master
@@ -183,7 +200,7 @@ def align_profiles(data_type,data_dic,inst,vis,gen_dic,coord_dic):
             #   the master table thus becomes specific to each exposure, but is still different from the table of the exposure
             #    - path to the master associated with current profile is updated
             if proc_mast:
-                data_ref = dataload_npz(data_vis['mast_'+data_type+'_data_paths'][iexp])
+                data_ref = dataload_npz(data_vis['mast_'+data_type_gen+'_data_paths'][iexp])
                 data_ref_align=align_data(data_ref,data_vis['type'],data_dic[inst]['nord'],dim_exp_resamp,gen_dic['resamp_mode'],cen_bins_resamp,edge_bins_resamp,rv_shift_cen,spec_dopshift)
                 np.savez_compressed(proc_gen_data_paths_new+'_ref'+str(iexp),data={'cen_bins':data_ref_align['cen_bins'],'edge_bins':data_ref_align['edge_bins'],'flux':data_ref_align['flux'],'cov':data_ref_align['cov']},allow_pickle=True)           
 
@@ -202,8 +219,8 @@ def align_profiles(data_type,data_dic,inst,vis,gen_dic,coord_dic):
     else: 
         #Updating path to processed data and checking it has been calculated
         check_data({'path':proc_gen_data_paths_new+'_add'}) 
-    data_vis['proc_'+data_type+'_data_paths'] = proc_gen_data_paths_new 
-    prop_dic[inst][vis]['idx_def'] = dataload_npz(data_vis['proc_'+data_type+'_data_paths']+'_add')['idx_aligned']
+    data_vis['proc_'+data_type_gen+'_data_paths'] = proc_gen_data_paths_new 
+    prop_dic[inst][vis]['idx_def'] = dataload_npz(data_vis['proc_'+data_type_gen+'_data_paths']+'_add')['idx_aligned']
 
     #Update data dimensions
     if (data_vis['comm_sp_tab']):
@@ -214,21 +231,27 @@ def align_profiles(data_type,data_dic,inst,vis,gen_dic,coord_dic):
 
     #Updating rest frame
     #    - rest frame of disk-integrated spectra is not updated if systemic velocity is 0
-    if (data_type!='DI') or (data_dic['DI']['sysvel'][inst][vis]!=0.):
-        data_dic[data_type][inst][vis]['rest_frame'] = {'DI':'star','Intr':'surf','Atm':'pl'}[data_type]
-    if proc_mast:data_vis['mast_'+data_type+'_data_paths']={}
+    if (data_type_gen!='DI') or (data_dic['DI']['sysvel'][inst][vis]!=0.):
+        data_dic[data_type_gen][inst][vis]['rest_frame'] = {'DI':'star','Intr':'surf','Atm':'pl'}[data_type_gen]
+    
+    #Updating paths
+    if proc_mast:data_vis['mast_'+data_type_gen+'_data_paths']={}
     if proc_locEst:data_vis['LocEst_Atm_data_paths'] = {}
-    if data_vis['tell_sp']:data_vis['tell_'+data_type+'_data_paths']={}  
+    if ('spec' in data_vis['type']) and gen_dic['corr_tell']:
+        data_vis['tell_'+data_type_gen+'_data_paths']={}  
     if data_vis['type']=='spec2D':
-        data_vis['mean_gcal_'+data_type+'_data_paths']={}  
-        if data_vis['cal_weight']:data_vis['sing_gcal_'+data_type+'_data_paths']={}  
+        data_vis['mean_gcal_'+data_type_gen+'_data_paths']={}  
+        data_vis['sing_gcal_'+data_type_gen+'_data_paths']={}  
+    if var_key is not None:data_vis[var_key+'_'+data_type_gen+'_data_paths']={}  
     for iexp in prop_dic[inst][vis]['idx_def']:
-        if proc_mast:data_vis['mast_'+data_type+'_data_paths'][iexp]=proc_gen_data_paths_new+'_ref'+str(iexp)
+        if proc_mast:data_vis['mast_'+data_type_gen+'_data_paths'][iexp]=proc_gen_data_paths_new+'_ref'+str(iexp)
         if proc_locEst and (iexp in data_vis['LocEst_Atm_data_paths']):data_vis['LocEst_Atm_data_paths'][iexp] = proc_gen_data_paths_new+'estloc'+str(iexp) 
-        if data_vis['tell_sp']:data_vis['tell_'+data_type+'_data_paths'][iexp] = proc_gen_data_paths_new+'_tell'+str(iexp)
+        if ('spec' in data_vis['type']) and gen_dic['corr_tell']:
+            data_vis['tell_'+data_type_gen+'_data_paths'][iexp] = proc_gen_data_paths_new+'_tell'+str(iexp)
         if data_vis['type']=='spec2D':
-            data_vis['mean_gcal_'+data_type+'_data_paths'][iexp] = proc_gen_data_paths_new+'_mean_gcal'+str(iexp)  
-            if data_vis['cal_weight']:data_vis['sing_gcal_'+data_type+'_data_paths'][iexp] = proc_gen_data_paths_new+'_sing_gcal'+str(iexp)  
+            data_vis['mean_gcal_'+data_type_gen+'_data_paths'][iexp] = proc_gen_data_paths_new+'_mean_gcal'+str(iexp)  
+            data_vis['sing_gcal_'+data_type_gen+'_data_paths'][iexp] = proc_gen_data_paths_new+'_sing_gcal'+str(iexp)  
+        if var_key is not None:data_vis[var_key+'_'+data_type_gen+'_data_paths'][iexp] = proc_gen_data_paths_new+'_'+var_key+str(iexp)    
             
     return None
 
@@ -416,17 +439,50 @@ def rescale_profiles(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plo
     if data_dic['DI']['rescale_DI']:proc_DI_data_paths_new = gen_dic['save_data_dir']+'Scaled_data/'+inst+'_'+vis+'_'
     else:proc_DI_data_paths_new = deepcopy(data_vis['proc_DI_data_paths'])
     data_vis['scaled_DI_data_paths'] = proc_DI_data_paths_new+'scaling_'   
-      
-    #Default transit model
-    if (vis not in data_dic['DI']['transit_prop'][inst]):
-        data_dic['DI']['transit_prop'][inst][vis] = {'mode':'model','dt':np.min(coord_dic[inst][vis]['t_dur']/60.)/5.}
-        print('         Default transit model')
-    transit_prop=data_dic['DI']['transit_prop'][inst][vis]
+
+    #Check
+    if (len(data_inst[vis]['studied_pl'])>0):
+        cond_tr = True
+    else:cond_tr = False
+    if (len(data_inst[vis]['studied_ar'])>0):
+        cond_ar = True
+    else:cond_ar = False
     
-    #Flux scaling
-    if not data_dic['DI']['rescale_DI']:print('         No flux scaling applied')
+    #Light curve
+    cond_lc = True
+    if (vis not in data_dic['DI']['transit_prop'][inst]):
+        if (not cond_ar) and (not cond_tr):cond_lc = False
+        else:
+            if cond_ar:stop('ERROR: active regions are defined; use imported or simulated transit light curve')
+            if cond_tr:
+                if len(data_inst[vis]['studied_pl'])>1:stop('ERROR: multiple transiting planets; use imported or simulated transit light curve')
+                print('         Default transit light curve model with single planet')
+                data_dic['DI']['transit_prop'][inst][vis] = {'mode':'model','dt':np.min(coord_dic[inst][vis]['t_dur']/60.)/5.}
+                transit_prop=data_dic['DI']['transit_prop'][inst][vis]
+    else:
+        transit_prop=data_dic['DI']['transit_prop'][inst][vis]
+        if transit_prop['mode']=='imp':
+            print('         Using imported light curve')   
+        elif transit_prop['mode']=='model':
+            if (not cond_ar) and (not cond_tr):cond_lc = False
+            else:
+                if cond_ar:stop('ERROR: active regions are defined; use imported or simulated transit light curve')
+                if cond_tr:
+                    if len(data_inst[vis]['studied_pl'])>1:stop('ERROR: multiple transiting planets; use imported or simulated transit light curve')
+                    print('         Using transit light curve model with single planet')
+        elif transit_prop['mode']=='simu': 
+            print('         Using simulated light curve')               
+    if not cond_lc:print('         Global scaling only')
+    else:print('         Global scaling and light curve scaling')
+    
+    #Flux scaling application
+    #    - if the data has absolute flux level, scaling should not be applied
+    #      light curve scaling is however still defined so that weight profiles can be computed (since the relative flux scaling that the data naturally contains is still used in weight computations)
+    #      global scaling unity is set to unity
+    if not data_dic['DI']['rescale_DI']:
+        print('         No scaling is applied. Computing light curve scaling and setting global scaling to 1.')
         
-    #Calculating rescaled data
+    #Calculating 
     if (gen_dic['calc_flux_sc']):
         print('         Calculating data')
         dic_save={}
@@ -436,219 +492,222 @@ def rescale_profiles(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plo
         if ('spec' in data_vis['type']) and ('chrom' in data_vis['system_prop']):key_chrom = ['chrom']
         else:key_chrom = ['achrom']
         system_prop = data_vis['system_prop'][key_chrom[0]]
-        LC_flux_band_all = np.zeros([data_vis['n_in_visit'],system_prop['nw']])*np.nan    
+        LC_flux_band_all = np.ones([data_vis['n_in_visit'],system_prop['nw']])    
+
+        #------------------------------------------------------------------------ 
+        #Light curve
+        if cond_lc:
         
-        #Simulated light curves
-        if transit_prop['mode']=='simu':
-            params_LC = deepcopy(system_param['star'])
-            params_LC.update({'rv':0.,'cont':1.}) 
-
-            #Include spots in the LC generation
-            if ar_dic!={} and ('ar_prop' in ar_dic) and (inst in ar_dic['ar_prop']) and (vis in ar_dic['ar_prop'][inst]):
-                params_LC['use_ar']=True
-                if (data_dic['DI']['ar_prop']=={}):stop('WARNING: spot properties for simulated light curves are not defined')
-            else:params_LC['use_ar']=False
-
-        #Calculate light curve for plotting        
-        if (plot_dic['input_LC']!='') or (plot_dic['prop_Intr']!=''):
-            
-            #High-resolution time table over visit
-            min_bjd = coord_dic[inst][vis]['bjd'][0]
-            max_bjd = coord_dic[inst][vis]['bjd'][-1]
-            dbjd_HR = plot_dic['dt_LC']/(3600.*24.)
-            nbjd_HR = round((max_bjd-min_bjd)/dbjd_HR)
-            bjd_HR=min_bjd+dbjd_HR*np.arange(nbjd_HR)
-      
-            #Corresponding orbital phases and coordinates for each planet
-            #    - high-resolution tables are calculated assuming no exposure duration
-            coord_HR = {}
-            LC_HR=np.ones([nbjd_HR,system_prop['nw']],dtype=float)  
-            if transit_prop['mode']=='simu':ecl_all_HR = np.zeros(nbjd_HR,dtype=bool)
-            for pl_loc in data_inst[vis]['studied_pl']:
-                pl_params_loc=system_param[pl_loc]
-                coord_HR[pl_loc]={'cen_ph':get_timeorbit(coord_dic[inst][vis][pl_loc]['Tcenter'],bjd_HR,pl_params_loc,None)[1]}   
-
-                #Definition of coordinates for all transiting planets
-                if transit_prop['mode']=='simu': 
-                    x_pos_pl,y_pos_pl,z_pos_pl,Dprojp,_,_,_,_,ecl_pl = calc_pl_coord(pl_params_loc['ecc'],pl_params_loc['omega_rad'],pl_params_loc['aRs'],pl_params_loc['inclin_rad'],coord_HR[pl_loc]['cen_ph'],data_dic['DI']['system_prop']['achrom'][pl_loc][0],pl_params_loc['lambda_rad'],system_param['star'])
-                    coord_HR[pl_loc].update({'ecl':ecl_pl,'cen_pos':np.vstack((x_pos_pl,y_pos_pl,z_pos_pl))})
+            #Simulated light curves
+            if transit_prop['mode']=='simu':
+                params_LC = deepcopy(system_param['star'])
+                params_LC.update({'rv':0.,'cont':1.}) 
     
-                    #Exposure considered out-of-transit if no planet at all is transiting
-                    ecl_all_HR |= abs(ecl_pl)!=1                      
-
-            #Corresponding orbital phases and coordinates for each spot
-            if (transit_prop['mode']=='simu') and (params_LC['use_ar']): 
-                ar_prop_HR = retrieve_ar_prop_from_param(ar_dic['ar_prop'][inst][vis], inst, vis)
-                ar_prop_HR['cos_istar']=system_param['star']['cos_istar']
-                for spot in data_inst[vis]['studied_ar']:
-                    coord_HR[spot]={}
-                    for key in gen_dic['ar_coord_par']:coord_HR[spot][key] = np.zeros([3,len(bjd_HR)],dtype=float)*np.nan
-                    coord_HR[spot]['is_visible'] = np.zeros([3,len(bjd_HR)],dtype=bool)
-                    for key in ['Tc_ar', 'ang_rad', 'lat_rad', 'fctrst']:coord_dic[inst][vis][spot][key] = ar_prop_HR[spot][key] 
+                #Include spots in the LC generation
+                if ar_dic!={} and ('ar_prop' in ar_dic) and (inst in ar_dic['ar_prop']) and (vis in ar_dic['ar_prop'][inst]):
+                    params_LC['use_ar']=True
+                    if (data_dic['DI']['ar_prop']=={}):stop('WARNING: spot properties for simulated light curves are not defined')
+                else:params_LC['use_ar']=False
     
-                #Retrieving the spot coordinates for all the times that we have
-                for itstamp, tstamp in enumerate(bjd_HR):
-                    for spot in data_inst[vis]['studied_ar']:
-                        ar_prop_exp = coord_expos_ar(spot,tstamp,ar_prop_HR,system_param['star'],dbjd_HR,gen_dic['ar_coord_par'])                           
-                        for key in ar_prop_exp:coord_HR[spot][key][:, itstamp] = [ar_prop_exp[key][0],ar_prop_exp[key][1],ar_prop_exp[key][2]] 
-
-        #------------------------------------------------------------------------        
-        
-        #Light curves from import
-        #    - defined over a set of wavelengths that can be different for each visit
-        #    - here we import the light curves, so that they can be interpolated for each visit after their exposures have been defined
-        if transit_prop['mode']=='imp':
-            t_dur_d=coord_dic[inst][vis]['t_dur']/(3600.*24.)
-            cen_bjd = coord_dic[inst][vis]['bjd']
-          
-            #Retrieving light curve
-            #    - first column must be absolute time (BJD), to be independent of a specific planet 
-            #    - next columns must be normalized stellar flux for all chosen bands, in the same order as data_dic['DI']['system_prop']['chrom']['w']
-            ext = transit_prop['path'].split('.')[-1]
-            if (ext=='csv'):
-                imp_LC = (pd.read_csv(transit_prop['path'])).values
-            elif (ext in ['txt','dat']):
-                imp_LC = np.loadtxt(transit_prop['path']).T          
-            else:
-                stop('Light curve path extension TBD') 
-            imp_LC[0] -= 2400000. 
-            if (plot_dic['input_LC']!=''):dic_save['imp_LC'] = imp_LC
-         
-            #Average imported light curve within the exposure time windows
-            #    - the light curve must be imported with sufficient temporal resolution
-            for iexp,(bjd_loc,dt_loc) in enumerate(zip(cen_bjd,t_dur_d)):
-
-                #Imported points within exposure
-                id_impLC=np_where1D( (imp_LC[0]>=bjd_loc-0.5*dt_loc) & (imp_LC[0]<=bjd_loc+0.5*dt_loc))
-              
-                #Normalized flux averaged within exposure
-                if len(id_impLC)>0:LC_flux_band_all[iexp,:]=np.mean(imp_LC[1::,id_impLC],axis=1)
-                else:stop('No LC measurements within exposure')
-
-            #Calculate light curve for plotting        
-            if (plot_dic['input_LC']!='') or (plot_dic['prop_Intr']!=''):     
-                for iband in range(system_prop['nw']):LC_HR[:,iband] = np_interp(bjd_HR,imp_LC[0],imp_LC[1+iband],left=imp_LC[1+iband,0],right=imp_LC[1+iband,-1])
-
-        #------------------------------------------------------------------------
-        
-        #Model light curve for a single planet
-        #    - can be oversampled   
-        #    - defined over a set of wavelengths but constant for each visit
-        elif transit_prop['mode']=='model':
-            if len(data_inst[vis]['studied_pl'])>1:stop('Multiple planets transiting')
-            pl_vis = data_inst[vis]['studied_pl'][0]
-            LC_params = batman.TransitParams()
-            LC_pl_params = system_param[pl_vis]
-        
-            #Phase reference for inferior conjunction
-            LC_params.t0 = 0. 
-            
-            #Orbital period in phase
-            LC_params.per = 1. 
-            
-            #Semi-major axis (in units of stellar radii)
-            LC_params.a = LC_pl_params['aRs']
-            
-            #Orbital inclination (in degrees)
-            #    - from the line of sight to the normal to the orbital plane
-            LC_params.inc = LC_pl_params['inclination'] 
-            
-            #Eccentricity
-            LC_params.ecc = LC_pl_params['ecc']
-            
-            #Longitude of periastron (in degrees)
-            LC_params.w = LC_pl_params['omega_deg']
-            
-            #Oversampling 
-            if ('dt' not in transit_prop):LC_osamp = np.repeat(10,data_vis['n_in_visit'])
-            else:LC_osamp = npint(np.ceil(coord_dic[inst][vis]['t_dur']/(60.*transit_prop['dt'])))
-            if np.min(LC_osamp)<2.:print('WARNING: no oversampling of model light curve')
-            
-            #Calculate white or chromatic light curves
-            cen_ph_pl = coord_dic[inst][vis][pl_vis]['cen_ph']
-            ph_dur_pl=coord_dic[inst][vis][pl_vis]['ph_dur']
-            for iband,wband in enumerate(system_prop['w']):
-    
-                #Light curve properties for the band
-                LC_params_band = deepcopy(LC_params)
-    
-                #LD law 
-                LD_mod = system_prop['LD'][iband]
-        
-                #Limb darkening coefficients in the format required for batman
-                LC_params_band.limb_dark = LD_mod
-                if LD_mod == 'uniform':
-                    ld_coeff=[]
-                elif LD_mod == 'linear':
-                    ld_coeff=[system_prop['LD_u1'][iband]]
-                elif LD_mod in ['quadratic' ,'squareroot','logarithmic', 'power2' ,'exponential']:
-                    ld_coeff=[system_prop['LD_u1'][iband],system_prop['LD_u2'][iband]]
-                elif LD_mod == 'nonlinear':   
-                    ld_coeff=[system_prop['LD_u1'][iband],system_prop['LD_u2'][iband],system_prop['LD_u3'][iband],system_prop['LD_u4'][iband]]           
-                else:
-                    stop('Limb-darkening not supported by batman')  
-                LC_params_band.u=ld_coeff
-        
-                #Planet-to-star radius ratio
-                LC_params_band.rp=system_prop[pl_vis][iband]
-
-                #All exposures have same duration
-                #    - process each band for all exposures together
-                if coord_dic[inst][vis]['cst_tdur']:
-                    LC_flux_band_all[:,iband] = batman.TransitModel(LC_params_band, cen_ph_pl, supersample_factor = LC_osamp[0], exp_time = ph_dur_pl[0]).light_curve(LC_params_band)
-                    
-                #Exposures have different durations
-                #    - process each band and each exposure
-                else:                      
-                    for iexp,(cen_ph_exp,ph_dur_exp,LC_osamp_exp) in enumerate(zip(cen_ph_pl,ph_dur_pl,LC_osamp)):                    
-                        LC_flux_band_all[iexp,iband]=float(batman.TransitModel(LC_params_band, np.array([cen_ph_exp]), supersample_factor = LC_osamp_exp, exp_time = np.array([ph_dur_exp])).light_curve(LC_params_band))
-                        
-                #Calculate light curve for plotting        
-                if (plot_dic['input_LC']!='') or (plot_dic['prop_Intr']!=''):
-                    LC_HR[:,iband] = batman.TransitModel(LC_params_band,coord_HR[pl_vis]['cen_ph']).light_curve(LC_params_band)  
-            
-        #------------------------------------------------------------------------
-     
-        #Simulated light curve   
-        #    - can account for multiple transiting planets
-        elif transit_prop['mode']=='simu':    
-            
-            #Set out-of-transit values to unity
-            #    - values will be redefined if relevant  
-            LC_flux_band_all[gen_dic[inst][vis]['idx_out'],:]=1.        
-            
-            #Oversampling factor, in units of RpRs
-            theo_dic_LC= deepcopy(theo_dic)
-            theo_dic_LC['d_oversamp_pl']={}
-            theo_dic_LC['n_oversamp_ar']={}
-            if (transit_prop['n_oversamp']>0.):
-                for pl_loc in data_inst[vis]['studied_pl']:theo_dic_LC['d_oversamp_pl'][pl_loc]=data_dic['DI']['system_prop']['achrom'][pl_loc][0]/transit_prop['n_oversamp'] 
-            if params_LC['use_ar']:
-                for spot in data_inst[vis]['studied_ar']:theo_dic_LC['n_oversamp_ar'][spot]=1
-
-            #Calculate transit light curves accounting for all planets in the visit
-            fixed_args = {}
-            if params_LC['use_ar']:
-                fixed_args['ar_coord_par']=gen_dic['ar_coord_par']
-                fixed_args['rout_mode']='Intr_prop'
-            plocc_prop,_,common_prop = sub_calc_plocc_ar_prop(key_chrom,fixed_args,[],data_inst[vis]['studied_pl'],[],system_param,theo_dic_LC,data_dic['DI']['system_prop'],params_LC,coord_dic[inst][vis],range(data_vis['n_in_visit']),system_ar_prop_in=data_dic['DI']['ar_prop'],Ftot_star=True) 
-            if not params_LC['use_ar']:LC_flux_band_all[gen_dic[inst][vis]['idx_in'],:]=plocc_prop[key_chrom[0]]['Ftot_star'][:, gen_dic[inst][vis]['idx_in']].T
-            else:LC_flux_band_all=common_prop[key_chrom[0]]['Ftot_star'].T    
-
             #Calculate light curve for plotting        
             if (plot_dic['input_LC']!='') or (plot_dic['prop_Intr']!=''):
-                theo_dic_LC['d_oversamp_pl']={}
-                if not params_LC['use_ar']:idx_HR = np_where1D(ecl_all_HR)
-                else:idx_HR = np.arange(nbjd_HR)                
-                plocc_prop_HR,_,common_prop_HR = sub_calc_plocc_ar_prop(key_chrom,fixed_args,[],data_inst[vis]['studied_pl'],[],system_param,theo_dic_LC,data_dic['DI']['system_prop'],params_LC,coord_HR,idx_HR,system_ar_prop_in=data_dic['DI']['ar_prop'],Ftot_star=True)
-                if not params_LC['use_ar']:LC_HR[idx_HR,:]=plocc_prop_HR[key_chrom[0]]['Ftot_star'].T
-                else:LC_HR[idx_HR,:]=common_prop_HR[key_chrom[0]]['Ftot_star'].T
+                
+                #High-resolution time table over visit
+                min_bjd = coord_dic[inst][vis]['bjd'][0]
+                max_bjd = coord_dic[inst][vis]['bjd'][-1]
+                dbjd_HR = plot_dic['dt_LC']/(3600.*24.)
+                nbjd_HR = round((max_bjd-min_bjd)/dbjd_HR)
+                bjd_HR=min_bjd+dbjd_HR*np.arange(nbjd_HR)
+          
+                #Corresponding orbital phases and coordinates for each planet
+                #    - high-resolution tables are calculated assuming no exposure duration
+                coord_HR = {}
+                LC_HR=np.ones([nbjd_HR,system_prop['nw']],dtype=float)  
+                if transit_prop['mode']=='simu':ecl_all_HR = np.zeros(nbjd_HR,dtype=bool)
+                for pl_loc in data_inst[vis]['studied_pl']:
+                    pl_params_loc=system_param[pl_loc]
+                    coord_HR[pl_loc]={'cen_ph':get_timeorbit(coord_dic[inst][vis][pl_loc]['Tcenter'],bjd_HR,pl_params_loc,None)[1]}   
+    
+                    #Definition of coordinates for all transiting planets
+                    if transit_prop['mode']=='simu': 
+                        x_pos_pl,y_pos_pl,z_pos_pl,Dprojp,_,_,_,_,ecl_pl = calc_pl_coord(pl_params_loc['ecc'],pl_params_loc['omega_rad'],pl_params_loc['aRs'],pl_params_loc['inclin_rad'],coord_HR[pl_loc]['cen_ph'],data_dic['DI']['system_prop']['achrom'][pl_loc][0],pl_params_loc['lambda_rad'],system_param['star'])
+                        coord_HR[pl_loc].update({'ecl':ecl_pl,'cen_pos':np.vstack((x_pos_pl,y_pos_pl,z_pos_pl))})
+        
+                        #Exposure considered out-of-transit if no planet at all is transiting
+                        ecl_all_HR |= abs(ecl_pl)!=1                      
+    
+                #Corresponding orbital phases and coordinates for each spot
+                if (transit_prop['mode']=='simu') and (params_LC['use_ar']): 
+                    ar_prop_HR = retrieve_ar_prop_from_param(ar_dic['ar_prop'][inst][vis], inst, vis)
+                    ar_prop_HR['cos_istar']=system_param['star']['cos_istar']
+                    for spot in data_inst[vis]['studied_ar']:
+                        coord_HR[spot]={}
+                        for key in gen_dic['ar_coord_par']:coord_HR[spot][key] = np.zeros([3,len(bjd_HR)],dtype=float)*np.nan
+                        coord_HR[spot]['is_visible'] = np.zeros([3,len(bjd_HR)],dtype=bool)
+                        for key in ['Tc_ar', 'ang_rad', 'lat_rad', 'fctrst']:coord_dic[inst][vis][spot][key] = ar_prop_HR[spot][key] 
+        
+                    #Retrieving the spot coordinates for all the times that we have
+                    for itstamp, tstamp in enumerate(bjd_HR):
+                        for spot in data_inst[vis]['studied_ar']:
+                            ar_prop_exp = coord_expos_ar(spot,tstamp,ar_prop_HR,system_param['star'],dbjd_HR,gen_dic['ar_coord_par'])                           
+                            for key in ar_prop_exp:coord_HR[spot][key][:, itstamp] = [ar_prop_exp[key][0],ar_prop_exp[key][1],ar_prop_exp[key][2]] 
 
-        #Store for plots
-        if (plot_dic['input_LC']!='') or (plot_dic['prop_Intr']!=''):
-            dic_save['flux_band_all'] = LC_flux_band_all
-            dic_save['coord_HR'] = coord_HR
-            dic_save['LC_HR'] = LC_HR
+            #------------------------------------------------------------------------        
+
+            #Light curves from import
+            #    - defined over a set of wavelengths that can be different for each visit
+            #    - here we import the light curves, so that they can be interpolated for each visit after their exposures have been defined
+            if transit_prop['mode']=='imp':
+                t_dur_d=coord_dic[inst][vis]['t_dur']/(3600.*24.)
+                cen_bjd = coord_dic[inst][vis]['bjd']
+              
+                #Retrieving light curve
+                #    - first column must be absolute time (BJD), to be independent of a specific planet 
+                #    - next columns must be normalized stellar flux for all chosen bands, in the same order as data_dic['DI']['system_prop']['chrom']['w']
+                ext = transit_prop['path'].split('.')[-1]
+                if (ext=='csv'):
+                    imp_LC = (pd.read_csv(transit_prop['path'])).values
+                elif (ext in ['txt','dat']):
+                    imp_LC = np.loadtxt(transit_prop['path']).T          
+                else:
+                    stop('Light curve path extension TBD') 
+                imp_LC[0] -= 2400000. 
+                if (plot_dic['input_LC']!=''):dic_save['imp_LC'] = imp_LC
+             
+                #Average imported light curve within the exposure time windows
+                #    - the light curve must be imported with sufficient temporal resolution
+                for iexp,(bjd_loc,dt_loc) in enumerate(zip(cen_bjd,t_dur_d)):
+    
+                    #Imported points within exposure
+                    id_impLC=np_where1D( (imp_LC[0]>=bjd_loc-0.5*dt_loc) & (imp_LC[0]<=bjd_loc+0.5*dt_loc))
+                  
+                    #Normalized flux averaged within exposure
+                    if len(id_impLC)>0:LC_flux_band_all[iexp,:]=np.mean(imp_LC[1::,id_impLC],axis=1)
+                    else:stop('No LC measurements within exposure')
+    
+                #Calculate light curve for plotting        
+                if (plot_dic['input_LC']!='') or (plot_dic['prop_Intr']!=''):     
+                    for iband in range(system_prop['nw']):LC_HR[:,iband] = np_interp(bjd_HR,imp_LC[0],imp_LC[1+iband],left=imp_LC[1+iband,0],right=imp_LC[1+iband,-1])
+    
+            #------------------------------------------------------------------------
+            
+            #Model light curve for a single planet
+            #    - can be oversampled   
+            #    - defined over a set of wavelengths but constant for each visit
+            elif transit_prop['mode']=='model':
+                pl_vis = data_inst[vis]['studied_pl'][0]
+                LC_params = batman.TransitParams()
+                LC_pl_params = system_param[pl_vis]
+            
+                #Phase reference for inferior conjunction
+                LC_params.t0 = 0. 
+                
+                #Orbital period in phase
+                LC_params.per = 1. 
+                
+                #Semi-major axis (in units of stellar radii)
+                LC_params.a = LC_pl_params['aRs']
+                
+                #Orbital inclination (in degrees)
+                #    - from the line of sight to the normal to the orbital plane
+                LC_params.inc = LC_pl_params['inclination'] 
+                
+                #Eccentricity
+                LC_params.ecc = LC_pl_params['ecc']
+                
+                #Longitude of periastron (in degrees)
+                LC_params.w = LC_pl_params['omega_deg']
+                
+                #Oversampling 
+                if ('dt' not in transit_prop):LC_osamp = np.repeat(10,data_vis['n_in_visit'])
+                else:LC_osamp = npint(np.ceil(coord_dic[inst][vis]['t_dur']/(60.*transit_prop['dt'])))
+                if np.min(LC_osamp)<2.:print('WARNING: no oversampling of model light curve')
+                
+                #Calculate white or chromatic light curves
+                cen_ph_pl = coord_dic[inst][vis][pl_vis]['cen_ph']
+                ph_dur_pl=coord_dic[inst][vis][pl_vis]['ph_dur']
+                for iband,wband in enumerate(system_prop['w']):
+        
+                    #Light curve properties for the band
+                    LC_params_band = deepcopy(LC_params)
+        
+                    #LD law 
+                    LD_mod = system_prop['LD'][iband]
+            
+                    #Limb darkening coefficients in the format required for batman
+                    LC_params_band.limb_dark = LD_mod
+                    if LD_mod == 'uniform':
+                        ld_coeff=[]
+                    elif LD_mod == 'linear':
+                        ld_coeff=[system_prop['LD_u1'][iband]]
+                    elif LD_mod in ['quadratic' ,'squareroot','logarithmic', 'power2' ,'exponential']:
+                        ld_coeff=[system_prop['LD_u1'][iband],system_prop['LD_u2'][iband]]
+                    elif LD_mod == 'nonlinear':   
+                        ld_coeff=[system_prop['LD_u1'][iband],system_prop['LD_u2'][iband],system_prop['LD_u3'][iband],system_prop['LD_u4'][iband]]           
+                    else:
+                        stop('Limb-darkening not supported by batman')  
+                    LC_params_band.u=ld_coeff
+            
+                    #Planet-to-star radius ratio
+                    LC_params_band.rp=system_prop[pl_vis][iband]
+    
+                    #All exposures have same duration
+                    #    - process each band for all exposures together
+                    if coord_dic[inst][vis]['cst_tdur']:
+                        LC_flux_band_all[:,iband] = batman.TransitModel(LC_params_band, cen_ph_pl, supersample_factor = LC_osamp[0], exp_time = ph_dur_pl[0]).light_curve(LC_params_band)
+                        
+                    #Exposures have different durations
+                    #    - process each band and each exposure
+                    else:                      
+                        for iexp,(cen_ph_exp,ph_dur_exp,LC_osamp_exp) in enumerate(zip(cen_ph_pl,ph_dur_pl,LC_osamp)):                    
+                            LC_flux_band_all[iexp,iband]=float(batman.TransitModel(LC_params_band, np.array([cen_ph_exp]), supersample_factor = LC_osamp_exp, exp_time = np.array([ph_dur_exp])).light_curve(LC_params_band))
+                            
+                    #Calculate light curve for plotting        
+                    if (plot_dic['input_LC']!='') or (plot_dic['prop_Intr']!=''):
+                        LC_HR[:,iband] = batman.TransitModel(LC_params_band,coord_HR[pl_vis]['cen_ph']).light_curve(LC_params_band)  
+                
+            #------------------------------------------------------------------------
+         
+            #Simulated light curve   
+            #    - can account for multiple transiting planets
+            elif transit_prop['mode']=='simu':    
+                
+                #Set out-of-transit values to unity
+                #    - values will be redefined if relevant  
+                LC_flux_band_all[gen_dic[inst][vis]['idx_out'],:]=1.        
+                
+                #Oversampling factor, in units of RpRs
+                theo_dic_LC= deepcopy(theo_dic)
+                theo_dic_LC['d_oversamp_pl']={}
+                theo_dic_LC['n_oversamp_ar']={}
+                if (transit_prop['n_oversamp']>0.):
+                    for pl_loc in data_inst[vis]['studied_pl']:theo_dic_LC['d_oversamp_pl'][pl_loc]=data_dic['DI']['system_prop']['achrom'][pl_loc][0]/transit_prop['n_oversamp'] 
+                if params_LC['use_ar']:
+                    for spot in data_inst[vis]['studied_ar']:theo_dic_LC['n_oversamp_ar'][spot]=1
+    
+                #Calculate transit light curves accounting for all planets in the visit
+                fixed_args = {}
+                if params_LC['use_ar']:
+                    fixed_args['ar_coord_par']=gen_dic['ar_coord_par']
+                    fixed_args['rout_mode']='Intr_prop'
+                plocc_prop,_,common_prop = sub_calc_plocc_ar_prop(key_chrom,fixed_args,[],data_inst[vis]['studied_pl'],[],system_param,theo_dic_LC,data_dic['DI']['system_prop'],params_LC,coord_dic[inst][vis],range(data_vis['n_in_visit']),system_ar_prop_in=data_dic['DI']['ar_prop'],Ftot_star=True) 
+                if not params_LC['use_ar']:LC_flux_band_all[gen_dic[inst][vis]['idx_in'],:]=plocc_prop[key_chrom[0]]['Ftot_star'][:, gen_dic[inst][vis]['idx_in']].T
+                else:LC_flux_band_all=common_prop[key_chrom[0]]['Ftot_star'].T    
+    
+                #Calculate light curve for plotting        
+                if (plot_dic['input_LC']!='') or (plot_dic['prop_Intr']!=''):
+                    theo_dic_LC['d_oversamp_pl']={}
+                    if not params_LC['use_ar']:idx_HR = np_where1D(ecl_all_HR)
+                    else:idx_HR = np.arange(nbjd_HR)                
+                    plocc_prop_HR,_,common_prop_HR = sub_calc_plocc_ar_prop(key_chrom,fixed_args,[],data_inst[vis]['studied_pl'],[],system_param,theo_dic_LC,data_dic['DI']['system_prop'],params_LC,coord_HR,idx_HR,system_ar_prop_in=data_dic['DI']['ar_prop'],Ftot_star=True)
+                    if not params_LC['use_ar']:LC_HR[idx_HR,:]=plocc_prop_HR[key_chrom[0]]['Ftot_star'].T
+                    else:LC_HR[idx_HR,:]=common_prop_HR[key_chrom[0]]['Ftot_star'].T
+    
+            #Store for plots
+            if (plot_dic['input_LC']!='') or (plot_dic['prop_Intr']!=''):
+                dic_save['flux_band_all'] = LC_flux_band_all
+                dic_save['coord_HR'] = coord_HR
+                dic_save['LC_HR'] = LC_HR
 
         #------------------------------------------------------------------------
 
@@ -687,27 +746,24 @@ def rescale_profiles(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plo
             #Spectral scaling table                                        
             #    - scale to the expected flux level at all wavelengths, using the broadband flux interpolated over the full spectrum range, unless a single band is used
             #    - accounts for the potentially chromatic signature of the planet 
-            #    - if the planet is not actually transiting (based on the determination of transit contacts) the 'null_loc_flux_scaling' flag is set to True
-            #      profile are still rescaled, with a light curve unity and 'loc_flux_scaling' equal to 0
+            #    - if there is no transiting planet, or active regions, of stellar flux modulations (ie, if LC_flux_band_all = 1 at all times) the 'null_loc_flux_scaling' flag remains set to True
+            #      'loc_flux_scaling' is still defined as a function returning 0, for later use 
             if np.max(np.abs(1.-LC_flux_band_all[iexp]))>0.:null_loc_flux_scaling[iexp] = False
-            if (system_prop['nw']==1):loc_flux_scaling[iexp] = np.poly1d([1.-LC_flux_band_all[iexp,0]])
+            if (system_prop['nw']==1) or (null_loc_flux_scaling[iexp]):loc_flux_scaling[iexp] = np.poly1d([1.-LC_flux_band_all[iexp,0]])
             else:loc_flux_scaling[iexp] = interp1d(system_prop['w'],1.-LC_flux_band_all[iexp],fill_value=(1.-LC_flux_band_all[iexp,0],1.-LC_flux_band_all[iexp,-1]), bounds_error=False)
                 
-            #Requested scaling range
-            if len(data_dic['DI']['scaling_range'])>0:
-                cond_def_scal=False 
-                for bd_int in data_dic['DI']['scaling_range']:cond_def_scal |= (edge_bins_com[:,0:-1]>=bd_int[0]) & (edge_bins_com[:,1:]<=bd_int[1])   
-            else:cond_def_scal=True 
+            #Global scaling
+            if data_dic['DI']['rescale_DI']:
+                
+                #Requested scaling range
+                if len(data_dic['DI']['scaling_range'])>0:
+                    cond_def_scal=False 
+                    for bd_int in data_dic['DI']['scaling_range']:cond_def_scal |= (edge_bins_com[:,0:-1]>=bd_int[0]) & (edge_bins_com[:,1:]<=bd_int[1])   
+                else:cond_def_scal=True 
+    
+                #Accounting for undefined pixels in scaling range            
+                cond_def_scal_all[iexp] = cond_def_all[iexp]  & cond_def_scal            
 
-            #Accounting for undefined pixels in scaling range            
-            cond_def_scal_all[iexp] = cond_def_all[iexp]  & cond_def_scal            
-
-        #Scaling pixels common to all exposures
-        #    - planetary signatures should not be excluded from the range of summation, for the same reason as they are included in the spectral scaling : the light curves used for the scaling include those ranges potentially absorbed by the planet
-        #      the same logic applies to CCF: their full range must be used for the scaling, and not just the continuum      
-        cond_scal_com  = np.all(cond_def_scal_all,axis=0)
-        if np.sum(cond_scal_com)==0.:stop('No pixels in common scaling range')    
-      
         #Defining global scaling values
         #    - used to set all profiles to a common global flux level
         #    - spectral profiles have been trimmed, corrected, and aligned
@@ -715,28 +771,39 @@ def rescale_profiles(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plo
         #      furthermore masters afterward will be calculated from these profiles, scaled, thus they do not need to be set to the level of the original global master
         #      we thus use the total flux summed over the full range of the current profiles, with their median taken as reference
         #    - defined on temporal flux density (not cumulated photoelectrons counts)
-        Tflux_all = np.zeros(data_vis['n_in_visit'],dtype=float)
-        dcen_bin_comm = (edge_bins_com[:,1::] - edge_bins_com[:,0:-1])
-        Tcen_bin_comm = 0.
-        for iord in range(data_inst['nord']):    
-            Tflux_all += np.sum(flux_all[:,iord,cond_scal_com[iord]]*dcen_bin_comm[iord,cond_scal_com[iord]],axis=1)
-            Tcen_bin_comm += np.sum(dcen_bin_comm[iord,cond_scal_com[iord]])
-        if data_dic['DI']['scaling_val'] is None:Tflux_ref = np.median(Tflux_all)
-        else:Tflux_ref=Tcen_bin_comm*data_dic['DI']['scaling_val']
-        norm_exp_glob = Tflux_all/Tflux_ref
+        if data_dic['DI']['rescale_DI']:
+
+            #Scaling pixels common to all exposures
+            #    - planetary signatures should not be excluded from the range of summation, for the same reason as they are included in the spectral scaling : the light curves used for the scaling include those ranges potentially absorbed by the planet
+            #      the same logic applies to CCF: their full range must be used for the scaling, and not just the continuum      
+            cond_scal_com  = np.all(cond_def_scal_all,axis=0)
+            if np.sum(cond_scal_com)==0.:stop('No pixels in common scaling range')               
+            
+            #Global scaling
+            Tflux_all = np.zeros(data_vis['n_in_visit'],dtype=float)
+            dcen_bin_comm = (edge_bins_com[:,1::] - edge_bins_com[:,0:-1])
+            Tcen_bin_comm = 0.
+            for iord in range(data_inst['nord']):    
+                Tflux_all += np.sum(flux_all[:,iord,cond_scal_com[iord]]*dcen_bin_comm[iord,cond_scal_com[iord]],axis=1)
+                Tcen_bin_comm += np.sum(dcen_bin_comm[iord,cond_scal_com[iord]])
+            if data_dic['DI']['scaling_val'] is None:Tflux_ref = np.median(Tflux_all)
+            else:Tflux_ref=Tcen_bin_comm*data_dic['DI']['scaling_val']            
+            norm_exp_glob = Tflux_all/Tflux_ref
+        else:norm_exp_glob = np.ones(data_vis['n_in_visit'],dtype=float)
 
         #Scaling each exposure
         #    - only defined bins are scaled (the flux in undefined bins remain set to nan), but the scaling spectrum was calculated at all wavelengths so that it can be used later with data for which different bins are defined or not
         #    - all defined bins remain defined 
-        #    - operation depends on condition 'rescale_DI' because flux scaling tbales may be required even if data needs not be scaled
+        #    - operation depends on condition 'rescale_DI' because flux scaling tables may be required even if data needs not be scaled
         for iexp in range(data_vis['n_in_visit']):  
             
             #Scale and save exposure
             if data_dic['DI']['rescale_DI']: 
-                data_exp = np.load(data_vis['proc_DI_data_paths']+str(iexp)+'.npz',allow_pickle=True)['data'].item() 
+                data_exp = dataload_npz(data_vis['proc_DI_data_paths']+str(iexp)) 
                 for iord in range(data_inst['nord']): 
-                    LC_exp_spec_ord = 1.-loc_flux_scaling[iexp](data_exp['cen_bins'][iord])
-                    data_exp['flux'][iord],data_exp['cov'][iord] = bind.mul_array(data_exp['flux'][iord],data_exp['cov'][iord],LC_exp_spec_ord/(coord_dic[inst][vis]['t_dur'][iexp]*norm_exp_glob[iexp]))
+                    if null_loc_flux_scaling[iexp]:flux_sc_ord = np.ones(data_vis['nspec'],dtype=float) 
+                    else:flux_sc_ord=(1.-loc_flux_scaling[iexp](data_exp['cen_bins'][iord]))
+                    data_exp['flux'][iord],data_exp['cov'][iord] = bind.mul_array(data_exp['flux'][iord],data_exp['cov'][iord],flux_sc_ord/(coord_dic[inst][vis]['t_dur'][iexp]*norm_exp_glob[iexp]))
                 datasave_npz(proc_DI_data_paths_new+str(iexp),data_exp)
             
             #Save scaling
@@ -882,7 +949,7 @@ def extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
     #Exposures for which local profiles will be extracted
     #    - the user can request extraction for in-transit exposures alone (to avoid computing time)
     #      we force the extraction for all exposures if a common master is used for the extraction (ie, when exposures are resampled on a common table) and no time is required to recalculate the master for each exposure
-    if data_dic['Diff']['extract_in'] and ('spec' in data_dic['Diff']['type'][inst]) and (not data_vis['comm_sp_tab']):data_dic['Diff'][inst][vis]['idx_to_extract'] = deepcopy(gen_dic[inst][vis]['idx_in'])
+    if data_dic['Diff']['extract_in'] and ('spec' in data_vis['type']) and (not data_vis['comm_sp_tab']):data_dic['Diff'][inst][vis]['idx_to_extract'] = deepcopy(gen_dic[inst][vis]['idx_in'])
     else:data_dic['Diff'][inst][vis]['idx_to_extract'] =  np.arange(data_vis['n_in_visit'],dtype=int) 
     data_dic['Diff'][inst][vis]['idx_def'] = data_dic['Diff'][inst][vis]['idx_to_extract'] 
 
@@ -918,6 +985,9 @@ def extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
         bin_prop['multi_flag'] = False
         if (mode=='multivis'):
             if (len(np.unique(list(ref_pl.values())))>1):bin_prop['multi_flag'] = True
+        
+        #Initializing weight calculation conditions
+        calc_EFsc2,calc_var_ref2,calc_flux_sc_all,var_key_def = weights_bin_prof_calc('DI','DI',gen_dic,data_dic,inst)     
 
         #Initialize binning
         #    - output tables contain a single value, associated with the single master (=binned profiles) used for the extraction 
@@ -926,17 +996,19 @@ def extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
         iexp_no_plrange_vis = {}
         exclu_rangestar_vis = {}
         for vis_bin in vis_to_bin:
-            if gen_dic['flux_sc']:scaled_data_paths_vis[vis_bin] = data_dic[inst][vis_bin]['scaled_DI_data_paths']
+            if gen_dic['flux_sc'] and calc_flux_sc_all:scaled_data_paths_vis[vis_bin] = data_dic[inst][vis_bin]['scaled_DI_data_paths']
             else:scaled_data_paths_vis[vis_bin] = None
             if ('DI_Mast' in data_dic['Atm']['no_plrange']):iexp_no_plrange_vis[vis_bin] = data_dic['Atm'][inst][vis_bin]['iexp_no_plrange']
             else:iexp_no_plrange_vis[vis_bin] = {}
             exclu_rangestar_vis[vis_bin] = data_dic['Atm'][inst][vis_bin]['exclu_range_star']
-        
+
         #Retrieving data that will be used in the binning to define the master disk-integrated profile
         #    - in process_bin_prof() all profiles are resampled on the common table before being binned, thus they can be resampled when uploaded the first time
         #    - here the binned profiles must be defined on the table of each processed exposure, so the components of the weight profile are retrieved here and then either copied or resampled if necessary for each exposure
         #      here a single binned profile (the master) is calculated, thus 'idx_to_bin_unik' is the same as idx_to_bin_all, which contains a single element
         data_to_bin_gen={}    
+        resamp_cond = {}
+        resamp_cond_all = False
         for iexp_off in idx_to_bin_unik:
             data_to_bin_gen[iexp_off]={}
 
@@ -946,41 +1018,56 @@ def extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
             vis_bin = idx_bin2vis[iexp_off]
             
             #Latest processed disk-integrated data and associated tables
-            #    - profiles should have been aligned in the star rest frame and rescaled to their correct flux level, if necessary          
+            #    - profiles should have been aligned in the star rest frame and rescaled to their correct flux level, if necessary    
+            #    - if profiles were converted into 1D we use directly the variance tables associated with DI profiles
+            #      no modifications were applied since the conversion, so no resampling is required   
             data_exp_off = dataload_npz(data_inst[vis_bin]['proc_DI_data_paths']+str(iexp_glob))
             for key in ['cen_bins','edge_bins','flux','cond_def','cov']:data_to_bin_gen[iexp_off][key] = data_exp_off[key]
-            if data_vis['tell_sp']:data_to_bin_gen[iexp_off]['tell'] = dataload_npz(data_inst[vis_bin]['tell_DI_data_paths'][iexp_glob])['tell']    
+            if ('spec' in data_vis['type']) and gen_dic['corr_tell'] and calc_EFsc2:
+                if ('tell_DI_data_paths' not in data_inst[vis_bin]):stop('ERROR : weighing telluric profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_corr_tell"] when running this module.')
+                data_to_bin_gen[iexp_off]['tell'] = dataload_npz(data_inst[vis_bin]['tell_DI_data_paths'][iexp_glob])['tell']    
             else:data_to_bin_gen[iexp_off]['tell'] = None
-            if data_inst['cal_weight']:
+            if (data_vis['type']=='spec2D') and calc_EFsc2:
+                if ('sing_gcal_DI_data_paths' not in data_inst[vis_bin]):stop('ERROR : weighing calibration profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_gcal"] when running this module.')  
                 data_gcal = dataload_npz(data_inst[vis_bin]['sing_gcal_DI_data_paths'][iexp_off])
                 data_to_bin_gen[iexp_off]['sing_gcal'] = data_gcal['gcal'] 
-                if 'sdet2' in data_gcal:data_to_bin_gen[iexp_off]['sdet2'] = data_gcal['sdet2'] 
+                if (vis_bin in data_inst['gcal_blaze_vis']):data_to_bin_gen[iexp_off]['sdet2'] = data_gcal['sdet2'] 
                 else:data_to_bin_gen[iexp_off]['sdet2'] = None                
             else:
                 data_to_bin_gen[iexp_off]['sing_gcal']=None   
-                data_to_bin_gen[iexp_off]['sdet2'] = None                   
-
+                data_to_bin_gen[iexp_off]['sdet2'] = None  
+            if data_dic['DI']['spec2D_to_spec1D'][inst]:data_to_bin_gen[iexp_off]['EFsc2'] = dataload_npz(data_inst[vis_bin]['EFsc2_DI_data_paths'][iexp_glob])['var']      
+            else:data_to_bin_gen[iexp_off]['EFsc2'] = None
+            
             #Master disk-integrated spectrum for weighing
             #    - profile has been shifted to the same frame as the differential profiles, but is still defined on the common table, not the table of current exposure
+            #    - master covariance is not required for DI profile weights
             #    - see process_binned_prof() for details
-            if gen_dic['DImast_weight']:
+            if (calc_EFsc2 or calc_var_ref2):        
+                if ('mast_DI_data_paths' not in data_dic[inst][vis_bin]):stop('ERROR : weighing DI master undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_DImast"] when running this module.')
                 data_ref = dataload_npz(data_dic[inst][vis_bin]['mast_DI_data_paths'][iexp_glob])
                 data_to_bin_gen[iexp_off]['edge_bins_ref'] = data_ref['edge_bins']
                 data_to_bin_gen[iexp_off]['flux_ref'] = data_ref['flux']
+            else:data_to_bin_gen[iexp_off]['flux_ref'] = None
+                
+            #Exposure duration
+            data_to_bin_gen[iexp_off]['dt'] = coord_dic[inst][vis_bin]['t_dur'][iexp_glob]
 
             #Weight profile
-            #    - only calculated here on a common table if:
-            # + binned profiles come from a single visit, defined on a common table for the visit
-            # + binned profiles come from multiple visits, defined on a common table for all visits    
-            #    - the master spectrum should be processed in the star rest frame, so that the stellar lines do not contribute to weighing         
-            if ((mode=='') and data_vis['comm_sp_tab']) or ((mode=='multivis') and data_inst['comm_sp_tab']):
-                flux_ref_exp = np.ones(data_dic[inst][vis_bin]['dim_exp'])  
-                data_to_bin_gen[iexp_off]['weight'] = weights_bin_prof(range(data_inst['nord']),scaled_data_paths_vis[vis_bin],inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_glob,'DI',data_dic[inst]['type'],data_vis['dim_exp'],data_to_bin_gen[iexp_off]['tell'],data_to_bin_gen[iexp_off]['sing_gcal'],data_to_bin_gen[iexp_off]['cen_bins'],1.,flux_ref_exp,None,bdband_flux_sc = gen_dic['flux_sc'],sdet_exp2 = data_to_bin_gen[iexp_off]['sdet2'])
-   
+            #    - only calculated here on a common table if resampling is not required
+            #    - resampling condition is that binned profiles:
+            # + come from a single visit, and do not share a common table for the visit
+            # + come from multiple visits, do not share a common table for all visits, and visit of the processed exposure is not the one used as reference for the common table of all visits (in which case resampling is not needed)     
+            resamp_cond[iexp_off] = ((mode=='') and (not data_inst[vis_bin]['comm_sp_tab'])) or ((mode=='multivis') and (not data_inst['comm_sp_tab']) and (vis_bin!=data_inst['com_vis']))
+            resamp_cond_all |= resamp_cond[iexp_off]
+            if (not resamp_cond[iexp_off]): 
+                data_to_bin_gen[iexp_off]['weight'] = weights_bin_prof(range(data_inst['nord']),scaled_data_paths_vis[vis_bin],inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],data_inst['nord'],iexp_glob,'DI',data_vis['type'],data_vis['dim_exp'],data_to_bin_gen[iexp_off]['tell'],data_to_bin_gen[iexp_off]['sing_gcal'],data_to_bin_gen[iexp_off]['cen_bins'],
+                                                                       data_to_bin_gen[iexp_off]['dt'],data_to_bin_gen[iexp_off]['flux_ref'],None,(calc_EFsc2,calc_var_ref2,calc_flux_sc_all),sdet_exp2 = data_to_bin_gen[iexp_off]['sdet2'],EFsc2_all_in = data_to_bin_gen[iexp_off]['EFsc2'])[0]
+
         #Processing each exposure of current visit selected for extraction
         iexp_proc = data_dic['Diff'][inst][vis]['idx_to_extract']
-        common_args = (data_vis['proc_DI_data_paths'],mode,data_vis['comm_sp_tab'],data_inst['comm_sp_tab'],proc_gen_data_paths_new,idx_to_bin_all[0],n_in_bin_all[0],dx_ov_all[0],idx_bin2orig,idx_bin2vis,data_inst['com_vis'],data_dic[inst]['nord'],data_vis['dim_exp'],data_vis['nspec'],gen_dic['flux_sc'],data_to_bin_gen,gen_dic['resamp_mode'],\
-                       scaled_data_paths_vis,inst,iexp_no_plrange_vis,exclu_rangestar_vis,data_dic[inst]['type'],gen_dic['type'],gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'])               
+        common_args = (data_vis['proc_DI_data_paths'],proc_gen_data_paths_new,idx_to_bin_all[0],n_in_bin_all[0],dx_ov_all[0],idx_bin2orig,idx_bin2vis,data_dic[inst]['nord'],data_vis['dim_exp'],data_vis['nspec'],data_to_bin_gen,gen_dic['resamp_mode'],\
+                       scaled_data_paths_vis,inst,iexp_no_plrange_vis,exclu_rangestar_vis,data_vis['type'],gen_dic['type'],gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],resamp_cond,resamp_cond_all,(calc_EFsc2,calc_var_ref2,calc_flux_sc_all))               
         if gen_dic['nthreads_diff_data']>1:MAIN_multithread(sub_extract_diff_profiles,gen_dic['nthreads_diff_data'],len(iexp_proc),[iexp_proc],common_args)                           
         else:sub_extract_diff_profiles(iexp_proc,*common_args)    
 
@@ -994,19 +1081,28 @@ def extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
     #    - at this stage a single master has been defined over the common spectral table, it will be resampled in the binning routine
     #    - calibration paths are updated even if they are not used as weights, to be used in flux/count scalings
     data_vis['proc_Diff_data_paths']=proc_gen_data_paths_new
-    if gen_dic['DImast_weight']:data_vis['mast_Diff_data_paths'] = data_vis['mast_DI_data_paths']
-    if data_vis['tell_sp']:data_vis['tell_Diff_data_paths'] = data_vis['tell_DI_data_paths']
+    if ('mast_DI_data_paths' not in data_vis):stop('ERROR : weighing DI master undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_DImast"] when running this module.')
+    data_vis['mast_Diff_data_paths'] = data_vis['mast_DI_data_paths']
+    if ('spec' in data_vis['type']) and gen_dic['corr_tell']:
+        if ('tell_DI_data_paths' not in data_vis):stop('ERROR : weighing telluric profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_corr_tell"] when running this module.')
+        data_vis['tell_Diff_data_paths'] = data_vis['tell_DI_data_paths']
     if gen_dic['flux_sc']:data_vis['scaled_Diff_data_paths'] = data_vis['scaled_DI_data_paths']
     if data_vis['type']=='spec2D':
         data_vis['mean_gcal_Diff_data_paths'] = data_vis['mean_gcal_DI_data_paths']
-        if data_vis['cal_weight']:data_vis['sing_gcal_Diff_data_paths'] = data_vis['sing_gcal_DI_data_paths']
+        if ('sing_gcal_DI_data_paths' not in data_vis):stop('ERROR : weighing calibration profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_gcal"] when running this module.')  
+        data_vis['sing_gcal_Diff_data_paths'] = data_vis['sing_gcal_DI_data_paths']
+    for subtype_gen in gen_dic['earliertypes4var']['Diff']:
+        if data_dic[subtype_gen]['spec2D_to_spec1D'][inst]:
+            var_key = gen_dic['type2var'][gen_dic['typegen2type'][subtype_gen]]
+            data_vis[var_key+'_Diff_data_paths']=data_vis[var_key+'_DI_data_paths']
+            break    
 
     return None
 
 
 
-def sub_extract_diff_profiles(iexp_proc,proc_DI_data_paths,mode,comm_sp_tab_vis,comm_sp_tab_inst,proc_gen_data_paths_new,idx_to_bin_mast,n_in_bin_mast,dx_ov_mast,idx_bin2orig,idx_bin2vis,com_vis,nord,dim_exp,nspec,flux_sc,data_to_bin_gen,resamp_mode,\
-                             scaled_data_paths_vis,inst,iexp_no_plrange_vis,exclu_rangestar_vis,vis_type,gen_type,corr_Fbal,corr_FbalOrd,save_data_dir):
+def sub_extract_diff_profiles(iexp_proc,proc_DI_data_paths,proc_gen_data_paths_new,idx_to_bin_mast,n_in_bin_mast,dx_ov_mast,idx_bin2orig,idx_bin2vis,nord,dim_exp,nspec,data_to_bin_gen,resamp_mode,\
+                             scaled_data_paths_vis,inst,iexp_no_plrange_vis,exclu_rangestar_vis,vis_type,gen_type,corr_Fbal,corr_FbalOrd,save_data_dir,resamp_cond,resamp_cond_all,calc_cond):            
     r"""**Differential profile extraction.** 
 
     Calculates differential profiles.
@@ -1024,14 +1120,12 @@ def sub_extract_diff_profiles(iexp_proc,proc_DI_data_paths,mode,comm_sp_tab_vis,
        
         #Upload latest processed DI data from which to extract local profile
         data_exp = dataload_npz(proc_DI_data_paths+str(iexp))
-
+    
         #Calculating master disk-integrated profile
         #    - the master is calculated in a given exposure:
         # + if it is the first one
-        # + if it is another one and binned profiles 
-        #       come from a single visit, and do not share a common table for the visit
-        #       come from multiple visits, do not share a common table for all visits, and visit of the processed exposure is not the one used as reference for the common table of all visits (in which case resampling is not needed)
-        if (isub==0) or ((mode=='') and (not comm_sp_tab_vis)) or ((mode=='multivis') and (not comm_sp_tab_inst)):                
+        # + if it is another one and binned profiles need resampling
+        if (isub==0) or resamp_cond_all:                
             data_to_bin={}
             for iexp_off in idx_to_bin_mast:
 
@@ -1044,26 +1138,29 @@ def sub_extract_diff_profiles(iexp_proc,proc_DI_data_paths,mode,comm_sp_tab_vis,
                 #    - data is stored with the same indexes as in idx_to_bin_all
                 #    - all exposures must be defined on the same spectral table before being binned
                 #    - if multiple visits are used and do not share a common table, they do not need resampling if their table is the one used as reference to set the common table
-                if ((mode=='') and (not comm_sp_tab_vis)) or ((mode=='multivis') and (not comm_sp_tab_inst) and (vis_bin!=com_vis)):
+                if resamp_cond[iexp_off]:
                     data_to_bin[iexp_off]={}
                     
                     #Resampling exposure profile
                     data_to_bin[iexp_off]['flux']=np.zeros(dim_exp,dtype=float)*np.nan
                     data_to_bin[iexp_off]['cov']=np.zeros(nord,dtype=object) 
+                    flux_ref_exp=np.zeros(dim_exp,dtype=float)*np.nan if (data_to_bin_gen[iexp_off]['flux_ref'] is not None) else None
                     tell_exp=np.ones(dim_exp,dtype=float) if (data_to_bin_gen[iexp_off]['tell'] is not None) else None
                     sing_gcal_exp=np.ones(dim_exp,dtype=float) if (data_to_bin_gen[iexp_off]['sing_gcal'] is not None) else None
                     sdet2_exp=np.zeros(dim_exp,dtype=float) if (data_to_bin_gen[iexp_off]['sdet2'] is not None) else None
+                    EFsc2_exp=np.zeros(dim_exp,dtype=float) if (data_to_bin_gen[iexp_off]['EFsc2'] is not None) else None
                     for iord in range(nord): 
                         data_to_bin[iexp_off]['flux'][iord],data_to_bin[iexp_off]['cov'][iord] = bind.resampling(data_exp['edge_bins'][iord], data_to_bin_gen[iexp_off]['edge_bins'][iord], data_to_bin_gen[iexp_off]['flux'][iord] , cov = data_to_bin_gen[iexp_off]['cov'][iord], kind=resamp_mode)                                                        
+                        if flux_ref_exp is not None:flux_ref_exp[iord] = bind.resampling(data_exp['edge_bins'][iord], data_to_bin_gen[iexp_off]['edge_bins_ref'][iord], data_to_bin_gen[iexp_off]['flux_ref'][iord], kind=resamp_mode)                                                        
                         if tell_exp is not None:tell_exp[iord] = bind.resampling(data_exp['edge_bins'][iord], data_to_bin_gen[iexp_off]['edge_bins'][iord], data_to_bin_gen[iexp_off]['tell'][iord] , kind=resamp_mode) 
                         if sing_gcal_exp is not None:sing_gcal_exp[iord] = bind.resampling(data_exp['edge_bins'][iord], data_to_bin_gen[iexp_off]['edge_bins'][iord],data_to_bin_gen[iexp_off]['sing_gcal'][iord], kind=resamp_mode)  
-                        if sdet2_exp is not None:sdet2_exp[iord] = bind.resampling(data_exp['edge_bins'][iord], data_to_bin_gen[iexp_off]['edge_bins'][iord],data_to_bin_gen[iexp_off]['sdet2'][iord], kind=resamp_mode)                   
+                        if sdet2_exp is not None:sdet2_exp[iord] = bind.resampling(data_exp['edge_bins'][iord], data_to_bin_gen[iexp_off]['edge_bins'][iord],data_to_bin_gen[iexp_off]['sdet2'][iord], kind=resamp_mode)         
+                        if EFsc2_exp is not None:EFsc2_exp[iord] = bind.resampling(data_exp['edge_bins'][iord], data_to_bin_gen[iexp_off]['edge_bins'][iord],data_to_bin_gen[iexp_off]['EFsc2'][iord], kind=resamp_mode)            
                     data_to_bin[iexp_off]['cond_def'] = ~np.isnan(data_to_bin[iexp_off]['flux'])   
                     if sdet2_exp is not None:sdet2_exp[np.isnan(sdet2_exp)]=0.
     
                     #Weight definition         
-                    flux_ref_exp = np.ones(dim_exp,dtype=float)
-                    data_to_bin[iexp_off]['weight'] = weights_bin_prof(range(nord),scaled_data_paths_vis[vis_bin],inst,vis_bin,corr_Fbal,corr_FbalOrd,save_data_dir,gen_type,nord,iexp_glob,'DI',vis_type,dim_exp,tell_exp,sing_gcal_exp,data_exp['cen_bins'],1.,flux_ref_exp,None,bdband_flux_sc = flux_sc,sdet_exp2 = sdet2_exp)
+                    data_to_bin[iexp_off]['weight'] = weights_bin_prof(range(nord),scaled_data_paths_vis[vis_bin],inst,vis_bin,corr_Fbal,corr_FbalOrd,save_data_dir,nord,iexp_glob,'DI',vis_type,dim_exp,tell_exp,sing_gcal_exp,data_exp['cen_bins'],data_to_bin[iexp_off]['dt'],flux_ref_exp,None,calc_cond,sdet_exp2 = sdet2_exp,EFsc2_all_in = EFsc2_exp)[0]
 
                 #Weighing components and current exposure are defined on the same table common to the visit 
                 else:data_to_bin[iexp_off] = deepcopy(data_to_bin_gen[iexp_off])  
@@ -1073,10 +1170,10 @@ def sub_extract_diff_profiles(iexp_proc,proc_DI_data_paths,mode,comm_sp_tab_vis,
                 if (iexp_glob in iexp_no_plrange_vis[vis_bin]):
                     for iord in range(nord):                   
                         data_to_bin[iexp_off]['cond_def'][iord] &=  excl_plrange(data_to_bin[iexp_off]['cond_def'][iord],exclu_rangestar_vis[vis_bin],iexp_off,data_exp['edge_bins'][iord],vis_type)[0]
-
+        
             #Calculate master on current exposure table
             data_mast = calc_bin_prof(idx_to_bin_mast,nord,dim_exp,nspec,data_to_bin,inst,n_in_bin_mast,data_exp['cen_bins'],data_exp['edge_bins'],dx_ov_in = dx_ov_mast)
-
+       
         #Extracting differential stellar profiles  
         #    - the master is defined for each individual exposures if they are defined on different spectral table
         #      otherwise defined on a single common spectral table, in which case we repeat the master to have the same structure as individual exposures          
@@ -1090,7 +1187,7 @@ def sub_extract_diff_profiles(iexp_proc,proc_DI_data_paths,mode,comm_sp_tab_vis,
 
         #Saving data
         #    - saved for each exposure, as the files are too large otherwise                
-        np.savez_compressed(proc_gen_data_paths_new+str(iexp),data=data_loc,allow_pickle=True)    
+        datasave_npz(proc_gen_data_paths_new+str(iexp),data_loc)    
     
     return None
 
@@ -1235,18 +1332,28 @@ def extract_intr_profiles(data_dic,gen_dic,inst,vis,star_params,coord_dic,theo_d
     #    - paths are defined for each exposure for associated tables, to avoid copying tables from differential profiles and simply point from in-transit to global differential profiles
     data_vis['proc_Intr_data_paths']=proc_gen_data_paths_new+'_' 
     if gen_dic['flux_sc']:data_vis['scaled_Intr_data_paths'] = data_vis['scaled_Diff_data_paths']
-    if gen_dic['DImast_weight']:data_vis['mast_Intr_data_paths'] = {}
-    if data_vis['tell_sp']:data_vis['tell_Intr_data_paths'] = {}
+    if 'mast_Diff_data_paths' in data_vis:data_vis['mast_Intr_data_paths'] = {}
+    if ('spec' in data_vis['type']) and gen_dic['corr_tell']:
+        if ('tell_Diff_data_paths' not in data_vis):stop('ERROR : weighing telluric profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_corr_tell"] when running this module.')
+        data_vis['tell_Intr_data_paths'] = {}
     if data_vis['type']=='spec2D':
         data_vis['mean_gcal_Intr_data_paths'] = {} 
-        if data_vis['cal_weight']:data_vis['sing_gcal_Intr_data_paths'] = {} 
+        if ('sing_gcal_Diff_data_paths' not in data_vis):stop('ERROR : weighing calibration profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_gcal"] when running this module.')  
+        data_vis['sing_gcal_Intr_data_paths'] = {} 
+    var_key = None
+    for subtype_gen in gen_dic['earliertypes4var']['Intr']:
+        if data_dic[subtype_gen]['spec2D_to_spec1D'][inst]:
+            var_key = gen_dic['type2var'][gen_dic['typegen2type'][subtype_gen]]
+            data_vis[var_key+'_Intr_data_paths']={}
+            break            
     for i_in,iexp in enumerate(gen_vis['idx_in']):
-        if gen_dic['DImast_weight']:data_vis['mast_Intr_data_paths'][i_in] = data_vis['mast_Diff_data_paths'][iexp]
-        if data_vis['tell_sp']:data_vis['tell_Intr_data_paths'][i_in] = data_vis['tell_Diff_data_paths'][iexp]
+        if 'mast_Intr_data_paths' in data_vis:data_vis['mast_Intr_data_paths'][i_in] = data_vis['mast_Diff_data_paths'][iexp]
+        if ('spec' in data_vis['type']) and gen_dic['corr_tell']:data_vis['tell_Intr_data_paths'][i_in] = data_vis['tell_Diff_data_paths'][iexp]
+        if var_key is not None:data_vis[var_key+'_Intr_data_paths'][i_in] = data_vis[var_key+'_Diff_data_paths'][iexp]
         if data_vis['type']=='spec2D':
             data_vis['mean_gcal_Intr_data_paths'][i_in] = data_vis['mean_gcal_Diff_data_paths'][iexp]
-            if data_vis['cal_weight']:data_vis['sing_gcal_Intr_data_paths'][i_in] = data_vis['sing_gcal_Diff_data_paths'][iexp]
-            
+            data_vis['sing_gcal_Intr_data_paths'][i_in] = data_vis['sing_gcal_Diff_data_paths'][iexp]
+
     #Correcting for relative chromatic shift    
     if ('spec' in data_vis['type']) and ('chrom' in data_dic['DI']['system_prop']):intr_rv_corr = True
     else:intr_rv_corr=False
@@ -1317,18 +1424,19 @@ def extract_intr_profiles(data_dic,gen_dic,inst,vis,star_params,coord_dic,theo_d
                     spec_dopshift_edge = 1./gen_specdopshift(rv_surf_star_edge)
     
                     #Spectral RV correction of current exposure and complementary tables
-                    if data_vis['tell_sp']:data_exp['tell'] = dataload_npz(data_vis['tell_Diff_data_paths'][iexp])['tell'] 
-                    if data_vis['type']=='spec2D':
-                        data_exp['mean_gcal'] = dataload_npz(data_vis['mean_gcal_Diff_data_paths'][iexp] )['mean_gcal'] 
-                        if data_vis['cal_weight']:
+                    if ('spec' in data_vis['type']):
+                        if gen_dic['corr_tell']:data_exp['tell'] = dataload_npz(data_vis['tell_Diff_data_paths'][iexp])['tell'] 
+                        if data_vis['type']=='spec2D':
+                            data_exp['mean_gcal'] = dataload_npz(data_vis['mean_gcal_Diff_data_paths'][iexp] )['mean_gcal'] 
                             data_gcal = dataload_npz(data_vis['sing_gcal_Diff_data_paths'][iexp])
                             data_exp['sing_gcal'] = data_gcal['gcal'] 
-                            if 'sdet2' in data_gcal:data_exp['sdet2'] = data_gcal['sdet2']                             
+                            if (vis in data_dic[inst]['gcal_blaze_vis']):data_exp['sdet2'] = data_gcal['sdet2']    
+                    if var_key is not None:data_exp[var_key] = dataload_npz(data_vis[var_key+'_Diff_data_paths'][iexp])['var']               
                     data_exp=align_data(data_exp,data_vis['type'],data_dic[inst]['nord'],data_dic[inst][vis]['dim_exp'],gen_dic['resamp_mode'],cen_bins_resamp,edge_bins_resamp,rv_surf_star,spec_dopshift_cen,rv_shift_edge = rv_surf_star_edge,spec_dopshift_edge=spec_dopshift_edge)
     
                     #Saving aligned exposure and complementary tables
                     if ('spec' in data_vis['type']):
-                        if data_vis['tell_sp']:
+                        if gen_dic['corr_tell']:
                             data_vis['tell_Intr_data_paths'][i_in] = proc_gen_data_paths_new+'_tell'+str(i_in)
                             datasave_npz(data_vis['tell_Intr_data_paths'][i_in],{'tell':data_exp['tell']})
                             data_exp.pop('tell')
@@ -1336,16 +1444,19 @@ def extract_intr_profiles(data_dic,gen_dic,inst,vis,star_params,coord_dic,theo_d
                             data_vis['mean_gcal_Intr_data_paths'][i_in] = proc_gen_data_paths_new+'_mean_gcal'+str(i_in)
                             datasave_npz(data_vis['mean_gcal_Intr_data_paths'][i_in],{'mean_gcal':data_exp['mean_gcal']})
                             data_exp.pop('mean_gcal')
-                            if data_vis['cal_weight']:
-                                data_gcal = {'gcal':deepcopy(data_exp['sing_gcal'])}
-                                data_exp.pop('sing_gcal')
-                                if 'sdet2' in data_exp:
-                                    data_gcal['sdet2']=deepcopy(data_exp['sdet2'])
-                                    data_exp.pop('sdet2')  
-                                datasave_npz(data_vis['sing_gcal_Intr_data_paths'][i_in],data_gcal) 
+                            data_gcal = {'gcal':deepcopy(data_exp['sing_gcal'])}
+                            data_exp.pop('sing_gcal')
+                            if 'sdet2' in data_exp:
+                                data_gcal['sdet2']=deepcopy(data_exp['sdet2'])
+                                data_exp.pop('sdet2')  
+                            datasave_npz(data_vis['sing_gcal_Intr_data_paths'][i_in],data_gcal) 
+                        if var_key is not None:
+                            data_vis[var_key+'_Intr_data_paths'][iexp] = proc_gen_data_paths_new+'_'+var_key+str(i_in)    
+                            datasave_npz(data_vis[var_key+'_Intr_data_paths'][iexp], {'var':data_exp[var_key]})          
+                            data_exp.pop(var_key)
     
                     #Spectral RV correction of weighing master
-                    if gen_dic['DImast_weight']:
+                    if ('mast_Intr_data_paths' in data_vis):
                         data_ref = dataload_npz(data_vis['mast_Diff_data_paths'][iexp]) 
                         data_ref_align=align_data(data_ref,data_vis['type'],data_dic[inst]['nord'],data_dic[inst][vis]['dim_exp'],gen_dic['resamp_mode'],cen_bins_resamp,edge_bins_resamp,rv_surf_star,spec_dopshift_cen,rv_shift_edge = rv_surf_star_edge,spec_dopshift_edge=spec_dopshift_edge)                  
                         data_vis['mast_Intr_data_paths'][i_in] = proc_gen_data_paths_new+'_ref'+str(i_in)
@@ -1679,18 +1790,47 @@ def extract_pl_profiles(data_dic,inst,vis,gen_dic):
     #Path to associated tables
     #    - atmospheric profiles are extracted in the same frame as differential profiles
     #    - indexes may be limited to in-transit indexes if absorption signals are extracted
-    if gen_dic['DImast_weight']:data_vis['mast_Atm_data_paths'] = {}
-    if data_vis['tell_sp']:data_vis['tell_Atm_data_paths'] = {}
+    if ('mast_Diff_data_paths' in data_vis):data_vis['mast_Atm_data_paths'] = {}
+    if ('spec' in data_vis['type']) and gen_dic['corr_tell']:
+        if ('tell_Diff_data_paths' not in data_vis):stop('ERROR : weighing telluric profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_corr_tell"] when running this module.')
+        data_vis['tell_Atm_data_paths'] = {}
     if data_vis['type']=='spec2D':
         data_vis['mean_gcal_Atm_data_paths'] = {}
-        if data_vis['cal_weight']:data_vis['sing_gcal_Atm_data_paths']={} 
+        if ('sing_gcal_Diff_data_paths' not in data_vis):stop('ERROR : weighing calibration profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_gcal"] when running this module.')  
+        data_vis['sing_gcal_Atm_data_paths']={} 
+    var_key = None
+    for subtype_gen in gen_dic['earliertypes4var']['Atm']:
+        if data_dic[subtype_gen]['spec2D_to_spec1D'][inst]:
+            var_key = gen_dic['type2var'][gen_dic['typegen2type'][subtype_gen]]
+            data_vis[var_key+'_'+data_dic['Atm']['pl_atm_sign']+'_data_paths']={}
+            break        
     for iexp_atm,iexp in zip(plAtm_vis['idx_def'],iexp_glob):
-        if gen_dic['DImast_weight']:data_vis['mast_Atm_data_paths'][iexp_atm] = data_dic[inst][vis]['mast_Diff_data_paths'][iexp] 
-        if data_vis['tell_sp']:data_vis['tell_Atm_data_paths'][iexp_atm] = data_vis['tell_Diff_data_paths'][iexp] 
-        if data_vis['type']=='spec2D':
+        if ('mast_Atm_data_paths' in data_vis):data_vis['mast_Atm_data_paths'][iexp_atm] = data_vis['mast_Diff_data_paths'][iexp] 
+        if ('tell_Atm_data_paths' in data_vis):data_vis['tell_Atm_data_paths'][iexp_atm] = data_vis['tell_Diff_data_paths'][iexp] 
+        if ('mean_gcal_Diff_data_paths' in data_vis):
             data_vis['mean_gcal_Atm_data_paths'][iexp_atm] = data_vis['mean_gcal_Diff_data_paths'][iexp] 
-            if data_vis['cal_weight']:data_vis['sing_gcal_Atm_data_paths'][iexp_atm] = data_vis['sing_gcal_Diff_data_paths'][iexp] 
+            data_vis['sing_gcal_Atm_data_paths'][iexp_atm] = data_vis['sing_gcal_Diff_data_paths'][iexp] 
+        if var_key is not None:data_vis[var_key+'_'+data_dic['Atm']['pl_atm_sign']+'_data_paths'][iexp_atm] = data_vis[var_key+'_Diff_data_paths'][iexp] 
 
     return None    
 
 
+
+
+
+################################################################################################## 
+#%% EvE output routines
+################################################################################################## 
+    
+def EvE_outputs():
+    
+    # #EvE output directory
+    # if gen_dic['EvE_outputs'] and (not path_exist(gen_dic['save_data_dir']+'EvE_outputs/')):makedirs(gen_dic['save_data_dir']+'EvE_outputs/')      
+    
+    
+    return None
+    
+    
+    
+    
+    
