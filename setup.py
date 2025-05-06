@@ -9,6 +9,27 @@ import subprocess
 proc_name = platform.machine()
 system = platform.system()
 
+#===================================================================
+# So far only concern linux OS
+def is_package_installed_ubuntu(package_name):
+    result = subprocess.run(["dpkg", "-s", package_name], capture_output=True, text=True)
+    return result.returncode == 0
+
+def is_package_installed_fedora(package_name):
+    result = subprocess.run(["rpm", "-q",  package_name], capture_output=True, text=True)
+    return result.returncode == 0
+
+def check_and_install(package_name, installed):
+    if installed:
+        print(f"{package_name} is already installed.")
+    else:
+        print(f"{package_name} is NOT installed.")
+        print(f"To install it, run:\n\n    sudo {'apt-get' if distro_id.lower() in ['ubuntu', 'debian'] else 'dnf'} install {package_name}\n")
+        print("Then re-run this setup script.")
+        sys.exit(1)
+
+#==================================================================
+
 try:
     if system=='Darwin':   #Mac OS
         #Check MacOS architecture
@@ -50,96 +71,57 @@ try:
             print("Unknown processor architecture.")
             sys.exit(1)
 
+
     elif system == 'Linux':   #Linux
         # Detect distro to distinguish which Linux system user has
+        distro_id = ""
         try:
-            distro_id = ""
             if os.path.exists('/etc/os-release'):
                 with open('/etc/os-release', 'r') as f:
                     for line in f:
                         if line.startswith('ID='):
                             distro_id = line.strip().split('=')[1].strip('"').lower()
+                            print("Detected Linux distribution:", distro_id)
                             break
         
         except subprocess.CalledProcessError as e:
-                print(f"Failed to detector Linux distribution: {e}")
-                sys.exit(1)
+            print(f"Failed to detector Linux distribution: {e}")
+            sys.exit(1)
 
-        #Ubuntu/Debian image
+        # Define package name
+        cerf_pkg = "libcerf-dev" if distro_id in ['ubuntu', 'debian'] else "libcerf-devel"
+        gsl_pkg = "libgsl-dev" if distro_id in ['ubuntu', 'debian'] else "gsl-devel"
+        # actually more like elif distro_id in ['fedora', 'rhel', 'centos'] else "libcerf-devel"
+
+        # Check installation status
         if distro_id in ['ubuntu', 'debian']:
-            # Check and install GSL via apt
-            try: 
-                apt_list_output = subprocess.run(["dpkg", "-s", "libgsl-dev"], capture_output=True, text=True)
-                if apt_list_output.returncode != 0:
-                    raise Exception("GSL not found. User should install GSL before proceeding with the ANTARESS installation.")
-                else:
-                    print("libgsl-dev is already installed.")
-            except subprocess.CalledProcessError as e:
-                print(f"Failed to check GSL install with apt: {e}")
-                sys.exit(1)
-
-            # Check and install libcerf via apt
-            try:
-                apt_list_output = subprocess.run(["dpkg", "-s", "libcerf-dev"], capture_output=True, text=True)
-                if apt_list_output.returncode != 0:
-                    print("libcerf-dev not found. Installing with apt...")
-                    subprocess.run(["apt-get", "update"], check=True)
-                    subprocess.run(["apt-get", "install", "-y", "libcerf-dev"], check=True)
-                    print("libcerf-dev installed successfully.")
-                else:
-                    print("libcerf-dev is already installed.")
-            except subprocess.CalledProcessError as e:
-                print(f"Failed to check/install libcerf with apt: {e}")
-                sys.exit(1)
-        
-        #Fedora/RHEL/Centos image
+            cerf_installed = is_package_installed_ubuntu(cerf_pkg)
+            gsl_installed = is_package_installed_ubuntu(gsl_pkg)
         elif distro_id in ['fedora', 'rhel', 'centos']:
-            # Check and install GSL via dnf
-            try: 
-                dnf_list_output = subprocess.run(["dnf", "list", "installed", "libgsl-devel"], capture_output=True, text=True)
-                if dnf_list_output.returncode != 0:
-                    raise Exception("GSL not found. User should install GSL before proceeding with the ANTARESS installation.")
-                else:
-                    print("libgsl-devel is already installed.")
-            except subprocess.CalledProcessError as e:
-                print(f"Failed to check GSL install with dnf: {e}")
-                sys.exit(1)
-
-            # Check and install libcerf via dnf
-            try:
-                dnf_list_output = subprocess.run(["dnf", "list", "installed", "libcerf-devel"], capture_output=True, text=True)
-                if dnf_list_output.returncode != 0:
-                    print("libcerf-devel not found. Installing with dnf...")
-                    subprocess.run(["dnf", "makecache"], check=True)
-                    subprocess.run(["dnf", "install", "libcerf-devel"], check=True)
-                    print("libcerf-dev installed successfully.")
-                else:
-                    print("libcerf-devel is already installed.")
-            except subprocess.CalledProcessError as e:
-                print(f"Failed to check/install libcerf with dnf: {e}")
-                sys.exit(1)
-
+            cerf_installed = is_package_installed_fedora(cerf_pkg)
+            gsl_installed = is_package_installed_fedora(gsl_pkg)
         else:
             print(f"Unsupported Linux distribution: {distro_id}")
             sys.exit(1)
+        
+        check_and_install(cerf_pkg, cerf_installed)
+        check_and_install(gsl_pkg, gsl_installed)
 
-        #Paths
-        gsl_include_dir = ['/usr/include']
-        gsl_lib_dir = ['/usr/lib', '/usr/lib/x86_64-linux-gnu', '/usr/lib64'] #add the third path as sometimes gsl is in there for Fedora
-        libcerf_include_dir = ['/usr/include']
-        libcerf_lib_dir = ['/usr/lib', '/usr/lib/x86_64-linux-gnu','/usr/lib64']
-
-    else:
-        print(f"Unsupported operating system: {system}")
-        sys.exit(1)
-
-    #Getting numpy location
-    numpy_include_dir = [numpy.get_include()]
 
 except Exception as e:
     print(f"An unexpected error occurred: {e}")
     sys.exit(1)
 
+#Paths
+gsl_include_dir = ['/usr/include']
+gsl_lib_dir = ['/usr/lib', '/usr/lib/x86_64-linux-gnu', '/usr/lib64'] #add the third path as sometimes gsl is in there for Fedora
+libcerf_include_dir = ['/usr/include']
+libcerf_lib_dir = ['/usr/lib', '/usr/lib/x86_64-linux-gnu','/usr/lib64']
+
+#Getting numpy location
+numpy_include_dir = [numpy.get_include()]
+
+# Define extension module
 module1 = Extension( 
     'C_star_grid',
     include_dirs=numpy_include_dir + gsl_include_dir + libcerf_include_dir,
@@ -151,7 +133,9 @@ module1 = Extension(
     extra_link_args=['-Wl,-v'] 
 )
 
-setup(name = 'Co-add stellar grid of profiles',
-        version = '1.0',
-        description = '',
-        ext_modules = [module1])
+setup(
+    name = 'Co-add stellar grid of profiles',
+    version = '1.0',
+    description = '',
+    ext_modules = [module1]
+    )
