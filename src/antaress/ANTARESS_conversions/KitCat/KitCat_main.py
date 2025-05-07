@@ -25,7 +25,7 @@ from antaress.ANTARESS_conversions.KitCat import calculate_RV_line_by_line3 as c
 
 
 def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_norm,gen_dic,save_data_paths,tell_spec,rv_sys,min_specdopshift_receiver_Earth,max_specdopshift_receiver_Earth,dic_sav,plot_spec,plot_ld,plot_ld_lw,plot_RVdev_fit,cont_func_dic,vis_iexp_in_bin,
-                data_type_gen,data_dic,plot_tellcont,plot_vald_depthcorr,plot_morphasym,plot_morphshape,plot_RVdisp):
+                data_type_gen,data_dic,plot_tellcont,plot_vald_depthcorr,plot_morphasym,plot_morphshape,plot_RVdisp,run_indiv_exp):
     mask_info=''
        
     #=============================================================================
@@ -40,6 +40,9 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
         if inst not in kernel_smooth:stop('Add '+inst+' to "kernel_smooth" in KitCat_main.py')
         kernel_smooth=kernel_smooth[inst]        
     
+    # if run_indiv_exp:
+    #     kernel_smooth=5
+        
     #Kernel profile
     if fwhm_ccf<=15.:kernel_prof = 'savgol'
     else:kernel_prof = 'gaussian'
@@ -64,8 +67,16 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     flux_norm_reg[cond_undef_reg] = 0.
 
     #Store for plotting
-    if plot_spec:dic_sav.update({'cen_bins_reg':cen_bins_reg,'flux_norm_reg':flux_norm_reg})
-
+    if plot_spec:
+        if not run_indiv_exp: # For the master, simply save the prepared spectra
+            dic_sav.update({'cen_bins_reg':cen_bins_reg[np.newaxis, :],
+                            'flux_norm_reg':flux_norm_reg[np.newaxis, :]})
+        else: # For individual exposures, we recover the lines from the master after sel0 and keep only these regions
+            flux_norm_reg = apply_master_mask(cen_bins_reg, flux_norm_reg ,dic_sav['sel0']['w_maxima_left'][0], dic_sav['sel0']['w_maxima_right'][0], dic_sav['sel0']['nl_mask_post'])
+            dic_sav['cen_bins_reg'] = np.vstack([dic_sav['cen_bins_reg'], cen_bins_reg])
+            dic_sav['flux_norm_reg'] = np.vstack([dic_sav['flux_norm_reg'], flux_norm_reg])
+        
+            
     #=============================================================================
     # EXTREMA LOCALISATION
     #=============================================================================
@@ -78,7 +89,9 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     else:
         vicinity_fwhm={'ESPRESSO':10.}    
         if inst not in vicinity_fwhm:stop('Add '+inst+' to "vicinity_fwhm" in KitCat_main.py')
-        vicinity_fwhm=vicinity_fwhm[inst]              
+        vicinity_fwhm=vicinity_fwhm[inst] 
+    # If we are analysing individual exposures, extend the visibility fwhm a bit
+    if run_indiv_exp: vicinity_fwhm += vicinity_fwhm/10
     vicinity_rv = fwhm_ccf/vicinity_fwhm
     vicinity_spec = vicinity_rv*cen_bins_reg/c_light
     vicinity_reg = int(np.min(vicinity_spec/dw_reg))
@@ -89,7 +102,7 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     index_minima = index_minima.astype('int')
     wave_minima = cen_bins_reg[index_minima]
    
-    #Maxima
+    #Minima    
     index_maxima, flux_maxima = myf.local_max(flux_norm_reg,vicinity_reg)
     index_maxima = index_maxima.astype('int')
     wave_maxima = cen_bins_reg[index_maxima]
@@ -147,6 +160,7 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     matrix_flux = np.vstack([f_minima,flux_maxima[0:-1],flux_maxima[1:]]).T
     matrix_index = np.vstack([index_minima,index_maxima[0:-1],index_maxima[1:]]).T
     nlines = len(matrix_index[:,0])
+    print(f'           {nlines} lines found') # this is the number of lines found initially
 
     #=============================================================================
     #Line screening
@@ -157,15 +171,16 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     #    - shifted from the Earth (source) into the star (receiver) rest frame. We neglect the Keplerian and BERV motions.
     #      see gen_specdopshift():
     # w_star ~ w_starbar = w_solbar * (1+ rv[solbar/starbar]/c)) ~ w_Earth * (1+ rv_sys/c))
-    if (inst in mask_dic['line_rej_range']):
-        cond_rej = np.repeat(False,nlines)
-        for bd_int in mask_dic['line_rej_range'][inst]:  
-            cond_rej |= ((matrix_wave[:,0]>bd_int[0]) & ((matrix_wave[:,0]<bd_int[1])))
-        mask_line=~cond_rej
-        matrix_wave = matrix_wave[mask_line]
-        matrix_flux = matrix_flux[mask_line]
-        matrix_index = matrix_index[mask_line]
-    else:mask_dic['line_rej_range'][inst]=np.array([[]])
+    if not run_indiv_exp: # Already done for the master, for the exposure, we already restricted the range
+        if (inst in mask_dic['line_rej_range']):
+            cond_rej = np.repeat(False,nlines)
+            for bd_int in mask_dic['line_rej_range'][inst]:  
+                cond_rej |= ((matrix_wave[:,0]>bd_int[0]) & ((matrix_wave[:,0]<bd_int[1])))
+            mask_line=~cond_rej
+            matrix_wave = matrix_wave[mask_line]
+            matrix_flux = matrix_flux[mask_line]
+            matrix_index = matrix_index[mask_line]
+        else:mask_dic['line_rej_range'][inst]=np.array([[]])
 
     #Issue warning
     if np.min(matrix_wave[:,0])<3000.:print('         WARNING: expect bad RASSINE normalisation below 3000 A')
@@ -178,7 +193,7 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     matrix_index = matrix_index[mask_line]   
     if np.sum(mask_line)==0:stop('ERROR : empty line list, check your settings for screening.' )
     if mask_dic['verbose']:print('             '+str(np.sum(mask_line))+' remaining lines')
-    
+        
     #Store line list as dictionary to facilitate manipulations
     wave_minima = matrix_wave[:,0] 
     w_maxima_left = matrix_wave[:,1]    
@@ -193,57 +208,155 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     Dico['left_width'] = Dico['w_minima']-Dico['w_maxima_left']
     Dico['right_width'] = Dico['w_minima']-Dico['w_maxima_right']
     Dico['left_depth'] = Dico['f_minima']-Dico['f_maxima_left']
-    Dico['right_depth'] = Dico['f_minima']-Dico['f_maxima_right']    
+    Dico['right_depth'] = Dico['f_minima']-Dico['f_maxima_right']   
+    Dico['idx_screened_lines'] = np.arange(len(wave_minima))
+                
+    
+    ### HIDE IN A FUNCTION ###
+    if run_indiv_exp: # For individual exposure, filter out the lines that not present in the master
+
+        exp_lines_w = Dico['w_minima'] # Screened lines for current exposure
+        mast_lines_w = dic_sav['sel0']['mast_lines_w'] # Screened lines for the master
+        mast_lines_idx = dic_sav['mast_line_tracking']['screening'] # Indices of screened lines for the master
+
+        line_in_mast = np.full(len(exp_lines_w), False, dtype=bool) # Array of size len(exp_lines_w) that will flag the lines common to the exp and master
+        common_lines_mast_idx = [] # Array of size len(mask_exp_lines == True), containing, the indices of the lines in the master for the lines common to the master and the exposure
+        for i in range(len(mast_lines_w)): # Iterate through all the lines found in the master
+            line_loc = mast_lines_w[i]
+            closest_exp_line_idx = np.argmin(np.abs(exp_lines_w - line_loc)) # Find the closest exp line to the current master line
+            closest_exp_line_w = exp_lines_w[closest_exp_line_idx] # closest exp line wl
+            threshold_same_line = 0.01 # Angstrom
+            is_within_threshold = abs(closest_exp_line_w - line_loc) < threshold_same_line # is the exp line within threshold_same_line of the master line
+            if line_in_mast[closest_exp_line_idx] and is_within_threshold: # Here the same line found in exp is associated with 2 lines in mast! Keep only the closest one.
+                prev_line_mast =  mast_lines_w[i-1]
+                dist_from_previous_mast_line = closest_exp_line_w - prev_line_mast
+                dist_from_current_mast_line  = line_loc - closest_exp_line_w
+                print(f"             Exposure line found at {closest_exp_line_w:.3f} is less than {threshold_same_line} A from 2 lines in the master:")
+                print(f"               -{dist_from_previous_mast_line:.5f} A from line at {prev_line_mast:.5f} A,")
+                print(f"               -{dist_from_current_mast_line:.5f} A from line at {line_loc:.5f} A.")
+                if dist_from_current_mast_line < dist_from_previous_mast_line:
+                    line_in_mast[closest_exp_line_idx] = is_within_threshold
+                    common_lines_mast_idx.pop() # remove the previous entry, i.e., the double matching exp line is associated with the current master line
+                    common_lines_mast_idx.append(mast_lines_idx[i])
+                    print(f"             ==> Exposure line found at {closest_exp_line_w:.3f} is closest to the current master line (at {line_loc:.3f}), matching it with this one")
+                    continue # ignore upcoming if case
+                else: # If the current master line 
+                    print(f"             ==> Exposure line found at {closest_exp_line_w:.3f} is closest to the previous master line (at {prev_line_mast:.3f}), ignoring this one.")
+                    continue
+            if is_within_threshold:
+                line_in_mast[closest_exp_line_idx] = is_within_threshold
+                common_lines_mast_idx.append(mast_lines_idx[i])      
+        
+        Dico = Dico.loc[line_in_mast]
+        Dico = Dico.reset_index(drop=True)
+        Dico['idx_mast_lines'] = common_lines_mast_idx # We set the ind of the lines wrt the master indexing
+        # dic_sav['sel0']['idx_screened_lines'][0]# We keep track of the lines in the master 
+        
+        # Improved?
+        # exp_lines_w = Dico['w_minima']  # Exposure lines (screened)
+        # mast_lines_w = dic_sav['sel0']['mast_lines_w']  # Master lines (screened)
+        # mast_lines_idx = dic_sav['sel0']['mast_lines_idx']  # Master indices for the lines
+
+        # # Initialize tracking arrays
+        # line_in_mast = np.full(len(exp_lines_w), False, dtype=bool)
+        # common_lines_mast_idx = []
+
+        # threshold_same_line = 0.01  # Angstrom
+
+        # for i, mast_line in enumerate(mast_lines_w):
+        #     closest_exp_idx = np.argmin(np.abs(exp_lines_w - mast_line))
+        #     closest_exp_w = exp_lines_w[closest_exp_idx]
+        #     is_within_threshold = abs(closest_exp_w - mast_line) < threshold_same_line
+
+        #     if line_in_mast[closest_exp_idx] and is_within_threshold:
+        #         # Duplicate match: same exposure line matched to multiple master lines
+        #         prev_mast_line = mast_lines_w[i - 1]
+        #         dist_prev = abs(closest_exp_w - prev_mast_line)
+        #         dist_curr = abs(closest_exp_w - mast_line)
+
+        #         print(f"  Exposure line at {closest_exp_w:.3f} Å is within {threshold_same_line} Å of two master lines:")
+        #         print(f"    - {dist_prev:.5f} Å from previous master line at {prev_mast_line:.5f} Å")
+        #         print(f"    - {dist_curr:.5f} Å from current master line at {mast_line:.5f} Å")
+
+        #         if dist_curr < dist_prev:
+        #             common_lines_mast_idx[-1] = mast_lines_idx[i]  # Replace previous match
+        #             print(f"  => Matched to current master line at {mast_line:.3f} Å")
+        #         else:
+        #             print(f"  => Retaining match with previous master line at {prev_mast_line:.3f} Å")
+        #         continue
+
+        #     if is_within_threshold:
+        #         line_in_mast[closest_exp_idx] = True
+        #         common_lines_mast_idx.append(mast_lines_idx[i])        
+                
+        # Dico = Dico.loc[line_in_mast]
+        # Dico = Dico.reset_index(drop=True)
+        # Dico['idx_mast_lines'] = common_lines_mast_idx # We set the ind of the lines wrt the master indexing
+
 
     #Store for plotting
-    dic_sav['sel0']={}
-    if plot_spec:
-        dic_sav['sel0'].update({'nl_mask_pre':nlines,'nl_mask_post':len(Dico['w_minima'])})                   
-        for key in ['f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right']:dic_sav['sel0'][key] = np.array(Dico[key])
-        dic_sav['sel0']['w_lines'] = np.array(Dico['w_minima'])
-        dic_sav['line_rej_range'] = mask_dic['line_rej_range'][inst]    
+    ## --> Here do the cross-match between remaining lines in the corrent exposure and the ones from sel0 in hte master
+    if plot_spec and not run_indiv_exp: # only for master
+        dic_sav['sel0']={}
+        dic_sav['sel0'].update({'nl_mask_pre':nlines,'nl_mask_post':len(Dico['w_minima'])})  
+        for key in ['f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right','idx_screened_lines']:dic_sav['sel0'][key] = np.array(Dico[key])[np.newaxis, :] # idx_mask_post was added to keep track which lines are kept during the master filtering, as the wl position might slightly differ for individual exposures following the re-extrema localisation                
+        dic_sav['sel0']['w_lines'] = np.array(Dico['w_minima'])[np.newaxis, :]
+        dic_sav['line_rej_range'] = mask_dic['line_rej_range'][inst][np.newaxis, :] 
+        # Add redundant line localisation and indices to be called when running exposures
+        dic_sav['sel0']['mast_lines_w'] = np.array(Dico['w_minima'])
+        # Create a key to keep track of all the filterings in the master
+        dic_sav['mast_line_tracking']={}
+        dic_sav['mast_line_tracking']['screening'] = np.array(Dico['idx_screened_lines'])
+    else: # For individual exposures
+        for key in ['f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right']:
+            common_property = keep_common_lines(dic_sav['sel0'][key][0], Dico[key], dic_sav['mast_line_tracking']['screening'], Dico['idx_mast_lines']) # Keep only the property of the lines that exist in the master, and add NaNs for lines that are only present in the master
+            dic_sav['sel0'][key] = np.vstack([dic_sav['sel0'][key], common_property])
+        common_w_lines = keep_common_lines(dic_sav['sel0']['w_lines'][0],  Dico['w_minima'], dic_sav['mast_line_tracking']['screening'], Dico['idx_mast_lines']) # Keep only the property of the lines that exist in the master, and add NaNs for lines that are only present in the master            
+        dic_sav['sel0']['w_lines'] = np.vstack([dic_sav['sel0']['w_lines'], common_w_lines])
+
 
     #=============================================================================  
     #RV weights 
     #    - weights do not include a contribution from the flux errors because they are used to compute CCFs in count-equivalent units (it would otherwise account twice for this ponderation)
     #=============================================================================
-    det_noise = {'ESPRESSO':1e-3}[inst]
-    flux_gradient = np.gradient(flux_norm_reg)/dw_reg
-    weight_vec = cen_bins_reg**2 * flux_gradient**2/(flux_norm_reg+det_noise**2.)
-    fwhm_pix = np.round(np.array(Dico['w_minima'])*(fwhm_ccf/c_light)*(1./dw_reg)).astype('int')  #maximum window for weight computation
-    idx_maxima_left_max = np.array(Dico['idx_minima'])-fwhm_pix
-    idx_maxima_right_min = np.array(Dico['idx_minima'])+fwhm_pix
-    idx_maxima_left_eff = np.maximum(np.array(Dico['idx_maxima_left']),idx_maxima_left_max)
-    idx_maxima_right_eff = np.minimum(np.array(Dico['idx_maxima_right']),idx_maxima_right_min)
-    weight_rv  = []
-    weight_rv_sym  = []
-    for indice_left,indice_right,idx_maxima_left_max_loc,idx_maxima_right_min_loc in zip(idx_maxima_left_eff,idx_maxima_right_eff,idx_maxima_left_max,idx_maxima_right_min):
-        weight_rv.append(np.sum(weight_vec[indice_left:indice_right+1]))
-        weight_rv_sym.append(np.sum(weight_vec[idx_maxima_left_max_loc:idx_maxima_right_min_loc+1]))
+    if not run_indiv_exp: # only for master
+        det_noise = {'ESPRESSO':1e-3}[inst]
+        flux_gradient = np.gradient(flux_norm_reg)/dw_reg
+        weight_vec = cen_bins_reg**2 * flux_gradient**2/(flux_norm_reg+det_noise**2.)
+        fwhm_pix = np.round(np.array(Dico['w_minima'])*(fwhm_ccf/c_light)*(1./dw_reg)).astype('int')  #maximum window for weight computation
+        idx_maxima_left_max = np.array(Dico['idx_minima'])-fwhm_pix
+        idx_maxima_right_min = np.array(Dico['idx_minima'])+fwhm_pix
+        idx_maxima_left_eff = np.maximum(np.array(Dico['idx_maxima_left']),idx_maxima_left_max)
+        idx_maxima_right_eff = np.minimum(np.array(Dico['idx_maxima_right']),idx_maxima_right_min)
+        weight_rv  = []
+        weight_rv_sym  = []
+        for indice_left,indice_right,idx_maxima_left_max_loc,idx_maxima_right_min_loc in zip(idx_maxima_left_eff,idx_maxima_right_eff,idx_maxima_left_max,idx_maxima_right_min):
+            weight_rv.append(np.sum(weight_vec[indice_left:indice_right+1]))
+            weight_rv_sym.append(np.sum(weight_vec[idx_maxima_left_max_loc:idx_maxima_right_min_loc+1]))
 
-    #Final weights
-    #    - see Bouchy+2001 Eq 8, weight is defined as the squared inverse of the error on a line RV 
-    # W[i] = w[i]^2* (df/dw)^2 / (f[i]+sD^2) 
-    #      = weight_vec with sD = 1e-3 
-    #      and
-    # W[line] = sum(W[i])
-    #      the weight is defined here as sqrt(W[line]) but is put to the square by pipelines before computing CCFs
-    weight_rv = np.array(weight_rv)
-    weight_rv /= np.nanpercentile(weight_rv,95)
-    weight_rv[weight_rv<=0] = np.min(abs(weight_rv[weight_rv!=0]))
-    Dico['weight_rv'] = (weight_rv)**(0.5)
-    
-    weight_rv_sym = np.array(weight_rv_sym)
-    weight_rv_sym /= np.nanpercentile(weight_rv_sym,95)
-    weight_rv_sym[weight_rv_sym<=0] = np.min(abs(weight_rv_sym[weight_rv_sym!=0]))
-    Dico['weight_rv_sym'] = (weight_rv_sym)**(0.5)    
-    
+        #Final weights
+        #    - see Bouchy+2001 Eq 8, weight is defined as the squared inverse of the error on a line RV 
+        # W[i] = w[i]^2* (df/dw)^2 / (f[i]+sD^2) 
+        #      = weight_vec with sD = 1e-3 
+        #      and
+        # W[line] = sum(W[i])
+        #      the weight is defined here as sqrt(W[line]) but is put to the square by pipelines before computing CCFs
+        weight_rv = np.array(weight_rv)
+        weight_rv /= np.nanpercentile(weight_rv,95)
+        weight_rv[weight_rv<=0] = np.min(abs(weight_rv[weight_rv!=0]))
+        Dico['weight_rv'] = (weight_rv)**(0.5)
+        
+        weight_rv_sym = np.array(weight_rv_sym)
+        weight_rv_sym /= np.nanpercentile(weight_rv_sym,95)
+        weight_rv_sym[weight_rv_sym<=0] = np.min(abs(weight_rv_sym[weight_rv_sym!=0]))
+        Dico['weight_rv_sym'] = (weight_rv_sym)**(0.5)    
+        
     
     
     #=============================================================================
     #Line depth and width selection
     #=============================================================================
-            
+
     #Depth between minima and average of bracketing maxima
     line_depth = abs(np.array(Dico['f_minima'])  - np.mean([np.array(Dico['f_maxima_left']),np.array(Dico['f_maxima_right'])],axis=0))     
     
@@ -256,7 +369,7 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
         
             #Depth between minima and continuum
             line_depth_cont = 1.-np.array(Dico['f_minima'])
-     
+    
             #Depth range criteria
             if (inst in mask_dic['linedepth_min']):linedepth_min = mask_dic['linedepth_min'][inst]
             else:linedepth_min = 0.01    #mainly to exclude abnormal 'positive' lines
@@ -282,16 +395,31 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
             else:
                 linedepth_contdepth = None
                 linedepth_rel = 10.
-             
+            # print(line_depth)
+            
             #Store for plotting
-            if plot_ld:
-                dic_sav.update({'line_depth_cont':line_depth_cont,'line_depth':line_depth,'linedepth_cont_min':linedepth_cont_min,'linedepth_cont_max':linedepth_cont_max,'linedepth_max':linedepth_max,'linedepth_min':linedepth_min,'linedepth_contdepth':linedepth_contdepth,
-                                'weight_rv_ld':np.array(Dico[mask_dic['mask_weights']])})
-      
+            if plot_ld: 
+                if not run_indiv_exp: # For Master
+                    dic_sav.update({'line_depth_cont':line_depth_cont[np.newaxis, :],
+                                    'line_depth':line_depth[np.newaxis, :],
+                                    'linedepth_cont_min':linedepth_cont_min, # Single value defined in settings
+                                    'linedepth_cont_max':linedepth_cont_max, # Single value defined in settings
+                                    'linedepth_max':linedepth_max, # Single value defined in settings
+                                    'linedepth_min':linedepth_min, # Single value defined in settings
+                                    'linedepth_contdepth':linedepth_contdepth, # Single value defined in settings
+                                    'weight_rv_ld':np.array(Dico[mask_dic['mask_weights']])}) # This property is not recorded for exposues, no np.newaxis needed
+                else: # For individual exposures, same, no need to crossmatch because the lines were cross-matched at sel0 and no mask was performed since
+                    common_line_depth_cont = keep_common_lines(dic_sav['line_depth_cont'][0],  line_depth_cont, dic_sav['mast_line_tracking']['screening'], Dico['idx_mast_lines']) # Keep only the property of the lines that exist in the master, and add NaNs for lines that are only present in the master            
+                    common_line_depth = keep_common_lines(dic_sav['line_depth'][0],  line_depth, dic_sav['mast_line_tracking']['screening'], Dico['idx_mast_lines'])
+                    dic_sav.update({'line_depth_cont':np.vstack((dic_sav['line_depth_cont'], common_line_depth_cont)),
+                                    'line_depth':np.vstack((dic_sav['line_depth'], common_line_depth)),
+                                    })
+     
             #Keep lines with continuum depth within the requested depth range, and with effective depth larger than a threshold
-            mask_line = (line_depth_cont > linedepth_cont_min)&(line_depth_cont < linedepth_cont_max)&(line_depth > linedepth_min ) & (line_depth < linedepth_max) & (line_depth<linedepth_rel)
+            mask_line = (line_depth_cont > linedepth_cont_min) & (line_depth_cont < linedepth_cont_max)&(line_depth > linedepth_min ) & (line_depth < linedepth_max) & (line_depth<linedepth_rel)
             Dico = Dico.loc[mask_line]
-            Dico = Dico.reset_index(drop=True)  
+            Dico = Dico.reset_index(drop=True)
+            if not run_indiv_exp: dic_sav['mast_line_tracking']['depth_range'] = np.array(Dico['idx_screened_lines']) # update the master lines idx
             if np.sum(mask_line)==0:stop('ERROR : empty line list, check your settings for depth and width.' )  
             if mask_dic['verbose']:print('             '+str(np.sum(mask_line))+' remaining lines')
     
@@ -308,22 +436,53 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
             log10_min_line_depth = np.log10(np.min(np.vstack([abs(Dico['left_depth']),abs(Dico['right_depth'])]),axis=0))  
             mask_line = (log10_min_line_depth>line_depth_logmin)&(log10_min_line_width>line_width_logmin)
         
+           
             #Store for plotting
             if plot_ld_lw:
-                dic_sav.update({'log10_min_line_depth':log10_min_line_depth,'log10_min_line_width':log10_min_line_width,'line_depth_logmin':line_depth_logmin,'line_width_logmin':line_width_logmin,'weight_rv_ld_lw':np.array(Dico[mask_dic['mask_weights']])})
-                
+                if not run_indiv_exp: # For Master
+                    dic_sav.update({'log10_min_line_depth':log10_min_line_depth[np.newaxis, :],
+                                    'log10_min_line_width':log10_min_line_width[np.newaxis, :],
+                                    'line_depth_logmin':line_depth_logmin, # Single value defined in settings
+                                    'line_width_logmin':line_width_logmin, # Single value defined in settings
+                                    'weight_rv_ld_lw':np.array(Dico[mask_dic['mask_weights']])}) # This property is not recorded for exposues, no np.newaxis needed
+                else:
+                    common_line_log10_min_line_depth = keep_common_lines(dic_sav['log10_min_line_depth'][0],  log10_min_line_depth, dic_sav['mast_line_tracking']['depth_range'], Dico['idx_mast_lines']) # Keep only the property of the lines that exist in the master, and add NaNs for lines that are only present in the master            
+                    common_line_log10_min_line_width = keep_common_lines(dic_sav['log10_min_line_width'][0],  log10_min_line_width,dic_sav['mast_line_tracking']['depth_range'], Dico['idx_mast_lines'])
+                    dic_sav.update({'log10_min_line_depth':np.vstack((dic_sav['log10_min_line_depth'], common_line_log10_min_line_depth)),
+                                    'log10_min_line_width':np.vstack((dic_sav['log10_min_line_width'], common_line_log10_min_line_width)),
+                                    })
+            
+                     
             #Restrict
             Dico = Dico.loc[mask_line]
             Dico = Dico.reset_index(drop=True) 
+            if not run_indiv_exp: dic_sav['mast_line_tracking']['depth_width'] = np.array(Dico['idx_screened_lines']) # update the master lines idx
             if np.sum(mask_line)==0:stop('ERROR : empty line list, check your settings for depth and width.' ) 
             if mask_dic['verbose']:print('             '+str(np.sum(mask_line))+' remaining lines') 
-            
+
             #Store for plotting
-            dic_sav['sel1']={}
-            if plot_spec:
-                dic_sav['sel1'].update({'nl_mask_pre':nlines,'nl_mask_post':len(Dico['w_minima']),'linedepth_cont_min':linedepth_cont_min,'linedepth_cont_max':linedepth_cont_max})                                
-                for key in ['f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right']:dic_sav['sel1'][key] = np.array(Dico[key])
-                dic_sav['sel1']['w_lines'] = np.array(Dico['w_minima'])
+            # dic_sav['sel1']={}
+            # if plot_spec:
+            #     dic_sav['sel1'].update({'nl_mask_pre':nlines,'nl_mask_post':len(Dico['w_minima']),'linedepth_cont_min':linedepth_cont_min,'linedepth_cont_max':linedepth_cont_max})                                
+            #     for key in ['f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right','idx_screened_lines']:dic_sav['sel1'][key] = np.array(Dico[key])
+            #     dic_sav['sel1']['w_lines'] = np.array(Dico['w_minima'])
+
+            if plot_spec and not run_indiv_exp: # only for master
+                dic_sav['sel1']={}
+                dic_sav['sel1'].update({'nl_mask_pre':nlines,'nl_mask_post':len(Dico['w_minima']),'linedepth_cont_min':linedepth_cont_min,'linedepth_cont_max':linedepth_cont_max})  
+                for key in ['f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right','idx_screened_lines']:dic_sav['sel1'][key] = np.array(Dico[key])[np.newaxis, :]
+                dic_sav['sel1']['w_lines'] = np.array(Dico['w_minima'])[np.newaxis, :]
+            else: # For individual exposures
+                for key in ['f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right']:
+                    common_property = keep_common_lines(dic_sav['sel1'][key][0], Dico[key], dic_sav['mast_line_tracking']['depth_width'], Dico['idx_mast_lines']) # Keep only the property of the lines that exist in the master, and add NaNs for lines that are only present in the master
+                    dic_sav['sel1'][key] = np.vstack([dic_sav['sel1'][key], common_property])
+                common_w_lines = keep_common_lines(dic_sav['sel1']['w_lines'][0],  Dico['w_minima'], dic_sav['mast_line_tracking']['depth_width'], Dico['idx_mast_lines']) # Keep only the property of the lines that exist in the master, and add NaNs for lines that are only present in the master            
+                dic_sav['sel1']['w_lines'] = np.vstack([dic_sav['sel1']['w_lines'], common_w_lines])
+
+            
+            if run_indiv_exp:
+                return [],[],[]
+            
 
     #=============================================================================
     #Line properties
@@ -360,6 +519,7 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
         #RV window for line position fit (km/s)
         if mask_dic['win_core_fit'] is None:win_core_fit=1.
         else:win_core_fit = mask_dic['win_core_fit']
+        
         
         #Fitting line central wavelength
         n_lines = len(np.array(Dico['idx_minima']))
@@ -452,7 +612,7 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
         dic_sav['sel2']={}
         if plot_spec:
             dic_sav['sel2'].update({'nl_mask_pre':dic_sav['sel1']['nl_mask_post'],'nl_mask_post':np.sum(mask_line)})
-            for key in ['w_lines','f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right']:dic_sav['sel2'][key] = np.array(Dico[key])
+            for key in ['w_lines','f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right','idx_screened_lines']:dic_sav['sel2'][key] = np.array(Dico[key])
 
     #=============================================================================
     # MORPHOLOGICAL properties
@@ -622,7 +782,7 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
             f_tell_contam = 1.-depth_tel[idx_contam]
             dic_sav['sel3'].update({'nl_mask_pre':dic_sav['sel2']['nl_mask_post'],'nl_mask_post':len(Dico['w_lines']),'spectre_t':spectre_t,'min_dopp_shift':min_dopp_shift,'max_dopp_shift':max_dopp_shift,
                                     'w_tell_contam':w_tell_contam,'f_tell_contam':f_tell_contam,'tell_depth_min':tell_depth_min})                                
-            for key in ['w_lines','f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right']:dic_sav['sel3'][key] = np.array(Dico[key])        
+            for key in ['w_lines','f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right','idx_screened_lines']:dic_sav['sel3'][key] = np.array(Dico[key])        
     
 
 
@@ -912,7 +1072,7 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
         dic_sav['sel4']={}
         if plot_spec:
             dic_sav['sel4'].update({'nl_mask_pre':dic_sav['sel3']['nl_mask_post'],'nl_mask_post':len(Dico['w_lines'])})                                
-            for key in ['w_lines','f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right']:dic_sav['sel4'][key] = np.array(Dico[key])        
+            for key in ['w_lines','f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right','idx_screened_lines']:dic_sav['sel4'][key] = np.array(Dico[key])        
 
 
 
@@ -950,7 +1110,7 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
         dic_sav['sel5']={}
         if plot_spec:
             dic_sav['sel5'].update({'nl_mask_pre':dic_sav['sel4']['nl_mask_post'],'nl_mask_post':len(Dico['w_lines'])})                                
-            for key in ['w_lines','f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right']:dic_sav['sel5'][key] = np.array(Dico[key])        
+            for key in ['w_lines','f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right','idx_screened_lines']:dic_sav['sel5'][key] = np.array(Dico[key])        
 
 
 
@@ -1008,7 +1168,6 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
             if mask_dic['nthreads']>1: RV_tab_vis = para_RV_LBL(RV_LBL,mask_dic['nthreads'],len(idx_RV_disp_sel),[idx_RV_disp_sel],common_args)                           
             else: RV_tab_vis = RV_LBL(idx_RV_disp_sel,*common_args)  
             RV_tab = np.append(RV_tab,RV_tab_vis,axis=2)   
-                 
         #Calculate weighted average of RV, dispersion, and dispersion/mean error, for each line
         #    - beware in cases where the number of out-of-transit spectra, and thus of RV measurements for each line, is too low to analyze the RV distribution and errors of a single line 
         av_RV_lines = np.ones(nlines,dtype=float)*1e10
@@ -1083,8 +1242,9 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     dic_sav['sel6']={}
     if plot_spec:
         dic_sav['sel6'].update({'nl_mask_pre':dic_sav['sel5']['nl_mask_post'],'nl_mask_post':len(Dico['w_lines']),'line_hrange':np.array(Dico['line_hrange'])})                                
-        for key in ['w_lines','f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right']:dic_sav['sel6'][key] = np.array(Dico[key])        
-
+        for key in ['w_lines','f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right','idx_screened_lines']:dic_sav['sel6'][key] = np.array(Dico[key])        
+        
+        
     return mask_waves,mask_weights,mask_info
     
     
@@ -1134,4 +1294,198 @@ def RV_LBL(idx_RV_disp_sel,Niter,win_size,nlines,data_vis_paths,cont_func_dic,w_
     return RV_tab
 
 
+
+# # Below are functions to compute different lines properties, which can the be applied to a spectra
+
+# # What are all the operations at the beginning of this script applied to the master? Don't this need to be applied to each individual exposures?
+
+# def retrieve_and_norm_spectra(exp_path,cont_func_dic):
     
+#     #Retrieve spectra 
+#     #    - must be aligned in the star rest frame
+#     data_exp = dataload_npz(exp_path)
+    
+#     #Continuum-normalisation
+#     wav_exp  = data_exp['cen_bins'][0]
+#     cont_exp= 1./cont_func_dic(wav_exp)
+#     flux_exp_norm,cov_exp_norm = bind.mul_array(data_exp['flux'][0],data_exp['cov'][0],cont_exp)
+#     err_exp_norm = np.sqrt(cov_exp_norm[0])
+    
+#     return flux_exp_norm, err_exp_norm
+    
+
+# def get_EW(flux, Dico, dw_reg):
+    
+#     Dico['min_width'] = np.min(np.vstack([abs(Dico['left_width']),abs(Dico['right_width'])]),axis=0)
+#     Dico['min_width_signed'] = np.diag(np.vstack([Dico['left_width'],Dico['right_width']])[np.argmin(np.vstack([abs(Dico['left_width']),abs(Dico['right_width'])]),axis=0),:])
+#     Dico['min_depth'] = np.min(np.vstack([abs(Dico['left_depth']),abs(Dico['right_depth'])]),axis=0)
+#     Dico['width'] = Dico['w_maxima_right']-Dico['w_maxima_left']
+#     Dico['line_depth'] = 1.- Dico['f_minima']
+#     Dico['line_nb']=np.arange(len(Dico['w_minima']))
+
+#     #Equivalent width
+#     EW = []
+#     for idx_maxima_left_loc,idx_maxima_right_loc in zip(np.array(Dico['idx_maxima_left']),np.array(Dico['idx_maxima_right'])):
+#         EW.append(np.sum(abs(1.-0.5*(flux[idx_maxima_left_loc:idx_maxima_right_loc]+flux[idx_maxima_left_loc+1:idx_maxima_right_loc+1]))))
+#     Dico['equivalent_width'] = dw_reg*np.array(EW)
+    
+    
+# def sel1(Dico, mask_dic, inst, fwhm_ccf, exp = False):
+    
+#     #Depth between minima and average of bracketing maxima
+#     line_depth = abs(np.array(Dico['f_minima'])  - np.mean([np.array(Dico['f_maxima_left']),np.array(Dico['f_maxima_right'])],axis=0))     
+       
+#     #Depth between minima and continuum
+#     line_depth_cont = 1.-np.array(Dico['f_minima'])
+
+#     #Depth range criteria
+#     if (inst in mask_dic['linedepth_min']):linedepth_min = mask_dic['linedepth_min'][inst]
+#     else:linedepth_min = 0.01    #mainly to exclude abnormal 'positive' lines
+#     if (inst in mask_dic['linedepth_max']):linedepth_max = mask_dic['linedepth_max'][inst]
+#     else:linedepth_max = 0.99    #mainly to exclude abnormal 'negative' lines    
+#     if (inst in mask_dic['linedepth_cont_min']):linedepth_cont_min = mask_dic['linedepth_cont_min'][inst]
+#     else:
+#         if (fwhm_ccf<15.):linedepth_cont_min = 0.10   
+#         else:linedepth_cont_min = 0.03 
+#     if (inst in mask_dic['linedepth_cont_max']):linedepth_cont_max = mask_dic['linedepth_cont_max'][inst]
+#     else:
+#         if (fwhm_ccf<15.):linedepth_cont_max = 0.95  
+#         else:linedepth_cont_max = 0.40 
+    
+#     #Depth = f(continuum depth) limit
+#     #    - both are correlated, so that a specific threshold can be defined
+#     if (inst in mask_dic['linedepth_contdepth']):
+#         linedepth_contdepth = mask_dic['linedepth_contdepth'][inst] 
+        
+#         #Linear threshold
+#         linedepth_rel = linedepth_contdepth[0]*line_depth_cont+linedepth_contdepth[1]
+        
+#     else:
+#         linedepth_contdepth = None
+#         linedepth_rel = 10.
+        
+#     # Get log10 depth and width
+#     if mask_dic['sel_ld_lw'] or exp: # If requested for the master, or if we're in all exposures mode:
+#         log10_min_line_width = np.log10(np.min(np.vstack([abs(Dico['left_width']),abs(Dico['right_width'])]),axis=0))
+#         log10_min_line_depth = np.log10(np.min(np.vstack([abs(Dico['left_depth']),abs(Dico['right_depth'])]),axis=0))
+                
+#     return  line_depth_cont,line_depth,linedepth_cont_min,linedepth_cont_max,linedepth_max,linedepth_min,linedepth_contdepth,linedepth_rel,log10_min_line_width,log10_min_line_depth
+
+
+
+
+######### Looping over all exposures #############
+
+#### 1. we can loop over the KitCat_main.kitcat_mask() function call in the masks_gen.py:
+####    - Get the dic_save, keep only the values of interests and append them to a second dimension for each key in a separate dictionnary
+####    - We need to set before the function call some conditions: 
+#               - deal with the filtering (turn it off?), change/ignore/force some input parameters to run all steps 
+
+#### 2. Put each steps in functions, and run all the functions needed, getting out only the needed parameters/properties for the all exposure case. 
+####    - Do some properties we don't need at the end have to be computed anyway because they will not be the same as for the master (e.g., line positions, EW...). This might require to anyway recompute almost everyting, which means that the breaking down in functions is not really efficienct and option 1 is probably better
+
+# def line_prop_all_exposures(dic_sav, Dico, mask_dic, inst, fwhm_ccf):
+
+#     dic_exp = {}
+
+#     for i, spec in enumerate(spectras):
+        
+#         ### TO DO ###
+        
+#         # - Import spectra
+#         # - Prep spectra
+        
+#         ########### Compute and save properties ###########
+        
+#         #-- Depth/Width (sel1) --#
+#         line_depth_cont, line_depth, _, _, _, _, _, _, log10_min_line_width, log10_min_line_depth = sel1(Dico, mask_dic, inst, fwhm_ccf, exp = True)
+
+#         # Append to the respective lists, only the computed ones, not the paramters in mask_dic
+#         dic_exp['line_depth_cont_exp'].append(line_depth_cont)
+#         dic_exp['line_depth_exp'].append(line_depth)
+#         dic_exp['log10_min_line_depth'].append(log10_min_line_depth)
+#         dic_exp['log10_min_line_width'].append(log10_min_line_width)
+
+#         ## What to do with Line properties (EW...). these are saved in Dico, are they still the same for all exposures than for the master, 
+#         # if not, everything needs to be recomputed? Line localisation, ect...
+        
+#         #-- Delta-position (sel2) --#
+        
+#         #-- Telluric contamination (sel3) --#
+        
+#         #-- Morphological (delta-maxima/line depth and asymetry parameter) (sel4) --#
+        
+#         #-- Morphological clipping (depth and width criteria) (sel5) --#
+        
+#         #-- RV dispersion + telluric contamination (sel6) --#
+                       
+                        
+#     # Convert NumPy arrays (needed ?)
+#     for key in dic_exp:
+#         dic_exp[key] = np.array(dic_exp[key])
+
+#     # Store in dic_sav
+#     dic_sav.update(dic_exp)
+    
+
+def apply_master_mask(cen_bins_reg, flux_norm_reg, w_maxima_left, w_maxima_right, nl_mask):
+    
+    indiv_exp_flux = np.full_like(flux_norm_reg, np.nan)  # Set array to nan with same dimension as flux
+
+    # Compute margins
+    width_lines = w_maxima_right - w_maxima_left
+    margins = 0.01 * width_lines  
+    min_lines = w_maxima_left - margins
+    max_lines = w_maxima_right + margins
+    
+    for i in range(nl_mask):
+        start_idx = np.searchsorted(cen_bins_reg, min_lines[i])
+        end_idx = np.searchsorted(cen_bins_reg, max_lines[i], side='right')
+
+        if start_idx < end_idx:
+            indiv_exp_flux[start_idx:end_idx] = flux_norm_reg[start_idx:end_idx]
+
+    return indiv_exp_flux
+
+def keep_common_lines(line_property_master, line_property_exp, original_line_ind_master, original_line_ind_exp):
+      # Array filled with nans of the size of the master property array
+      common_line_property_exp = np.full_like(line_property_master, np.nan)
+      # Identify the line numbers in common to master and exp
+      common_lines = np.intersect1d(original_line_ind_master,original_line_ind_exp)
+      # Find where these are in the master property array and in the exp property array 
+      loc_common_lines_in_master = np.where(np.isin(original_line_ind_master, common_lines))[0]
+      loc_common_lines_in_exp    = np.where(np.isin(original_line_ind_exp, common_lines))[0]
+      # Assign the exp property values to the correct lines 
+      common_line_property_exp[loc_common_lines_in_master] = line_property_exp[loc_common_lines_in_exp]
+      return common_line_property_exp
+    
+    
+### TO DO ####
+
+# Sumarize changes and the new procedure for individual exposure
+    # TO BE checked before entering the loop with the treament of the individual exposures
+    # Before looping over the kitkat function, we run the master analysis, copy the resulting dictionnary and prepare all keys that will be appended by for each exposure with a new dimension
+    # We load the individual exposure and smooth/resample it like the master
+    # We set to nan all parts of the spectra that were revomed in the master POST line screening
+    # We recompute the line localisation for the individual exposure on these lines with a slightly broader vicinity_fwhm
+    # The line localizartion parameters (left/right...) are not saved in sel dictionnaries, and are just existing during the function call to compute all the other quantities
+    # In order to match the lines that are filtered at each step for the master, we add, during the master analysis, in the selX dictionnaries, a numbering to each line, to keep track of the one that are gone
+        # !!! This only works if the extrema localisation on the individual exposure did not yield a different number of lines than the master !!!
+    # At each step, we recompute the properties and save them in the new dimension but ONLY for the lines that are filtered at the  master stage.
+
+
+
+
+# List all the kept parameter for individual exposures
+
+    # if exp: # if we are in single exposures mode, clean the dictionnary to keep only necessary columns:
+    #     # drop items not in this list
+
+    #     exp_used_properties = ["cen_bins_reg","flux_norm_reg", # sel 0
+    #                            "line_rej_range","line_depth_cont","line_depth","weight_rv_ld","log10_min_line_depth","log10_min_line_width","weight_rv_ld_lw", # sel 1
+    #                            "abs_RVdev_fit","weight_rv_RVdev_fit", # sel 2
+    #                            "rel_contam","weight_rv_tellcont", # sel 3
+    #                            "diff_continuum_rel","abs_asym_ddflux_norm","weight_rv_morphasym", # sel 4
+    #                            "diff_depth","width_kms","weight_rv_morphshape", # sel 5
+    #                            "abs_av_RV_lines","disp_err_RV_lines","disp_RV_lines","weight_rv_RVdisp","rel_contam_final","weight_rv_tellcont_final" # sel 6
+    #                            ]

@@ -6,14 +6,13 @@ from copy import deepcopy
 import os as os_system 
 import bindensity as bind
 from antaress.ANTARESS_general.utils import stop,np_where1D,dataload_npz,datasave_npz,air_index,gen_specdopshift
-
+from antaress.ANTARESS_conversions.KitCat import KitCat_main
 
 
 
 
 def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_param,data_prop):
     r"""**CCF mask generation**
-
     Generates CCF binary masks from processed stellar spectrum. 
     
     2D spectra must have been aligned in the star (for disk-integrated profiles), photosphere (for intrinsic profiles), or planet (for atmospheric profiles) rest frame, converted into 1D profiles, and binned into a master spectrum.  
@@ -32,8 +31,8 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
 
     Returns:
         None
-    """    
-    
+    """   
+
     data_inst = data_dic[inst]
     print('   > Defining CCF mask for '+gen_dic['type_name'][data_type_gen]+' profiles') 
     
@@ -54,12 +53,13 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
     mask_dic = prop_dic['mask']
 
     #Retrieve binning information
-    data_bin = dataload_npz(gen_dic['save_data_dir']+data_type_gen+'bin_data/'+gen_dic['add_txt_path'][data_type_gen]+inst+'_'+vis_det+'_'+prop_dic['dim_bin']+'_add')
+    # data_bin = dataload_npz(gen_dic['save_data_dir']+data_type_gen+'bin_data/'+gen_dic['add_txt_path'][data_type_gen]+inst+'_'+vis_det+'_'+prop_dic['dim_bin']+'_add')
+    data_bin = dataload_npz(gen_dic['save_data_dir']+data_type_gen+'bin_data/'+gen_dic['add_txt_path'][data_type_gen]+inst+'_'+vis_det+'_'+data_inst[vis]['type']+'_'+prop_dic['dim_bin']+'_add') # Samson addition 02-05
 
     #Retrieve master spectrum
     if data_bin['n_exp']>1:stop('Bin data into a single master spectrum')
-    data_mast = dataload_npz(gen_dic['save_data_dir']+data_type_gen+'bin_data/'+gen_dic['add_txt_path'][data_type_gen]+inst+'_'+vis_det+'_'+prop_dic['dim_bin']+str(0))
-
+    #data_mast = dataload_npz(gen_dic['save_data_dir']+data_type_gen+'bin_data/'+gen_dic['add_txt_path'][data_type_gen]+inst+'_'+vis_det+'_'+prop_dic['dim_bin']+str(0))
+    data_mast = dataload_npz(gen_dic['save_data_dir']+data_type_gen+'bin_data/'+gen_dic['add_txt_path'][data_type_gen]+inst+'_'+vis_det+'_'+data_inst[vis]['type']+'_'+prop_dic['dim_bin']+str(0)) # Samson addition 02-05
     #Check for alignment
     if (not gen_dic['align_'+data_type_gen]) or ((data_type_gen=='DI') and (not gen_dic['align_DI'] and data_bin['sysvel']==0.)):
         stop('Data must have been aligned in the stellar rest frame')
@@ -67,44 +67,183 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
     #Check for in-transit contamination
     if (data_type_gen=='DI') and data_bin['in_inbin']:
         stop('Disk-integrated master contain in-transit profiles')
-        
+         
+    # Run for loop, do only one iteration for the master, and n_exp +1 in individual exposure mode (n_exp + 1 for the first which is done on the master)    
+    
+    if not mask_dic['indiv_exp']: # master 
+        n_iter = 1
+    else: # Count and load spectra from 1Dfrom2D, there is probably a better way to do this with smth like: data_exp = dataload_npz(data_bin['vis_iexp_in_bin'][vis_bin][iexp]['data_path'])
+        # ??? SHOULD THESE BE BINNED LIKE THE MASTER IS?? ###
+        path_to_spec1D = gen_dic['save_data_dir']+data_type_gen+'_data/'+'1Dfrom2D/'
+        files = os_system.listdir(path_to_spec1D)
+
+        filtered_files = [os_system.path.join(path_to_spec1D, f)[:-4] for f in files 
+                        if os_system.path.isfile(os_system.path.join(path_to_spec1D, f)) and not any(substr in f for substr in ['tell','ref','add', 'EFsc'])]
+
+        indiv_exp = [dataload_npz(spectrum) for spectrum in filtered_files]
+        n_iter = 5#len(filtered_files) + 1 # nb of exposure + the master
+                
     #CCF masks for disk-integrated and intrinsic spectra
     dic_sav = {}
+    dic_test_mast = {}
+    dic_test_spec = {}
+    run_indiv_exp = False
     if (data_type_gen in ['DI','Intr']):
-        if data_dic['DI']['mask']['verbose']:print('           Continuum-normalization')
-
-        #Limit master to minimum definition range
-        idx_def_mast = np_where1D(data_mast['cond_def'][0])
-        flux_mast = data_mast['flux'][:,idx_def_mast[0]:idx_def_mast[-1]+1]
-        cen_bins_mast = data_mast['cen_bins'][:,idx_def_mast[0]:idx_def_mast[-1]+1]
-        cond_def_mast = data_mast['cond_def'][:,idx_def_mast[0]:idx_def_mast[-1]+1]
-        edge_bins_mast = data_mast['edge_bins'][:,idx_def_mast[0]:idx_def_mast[-1]+2]
-        nspec = len(flux_mast[0])
         
-        #Continuum-normalisation
-        #    - nan gaps are left as is. They will broaden when the master spectrum is smoothed, but this is better than filling in the gaps with artificial values
-        # (especially zero values that creates sharp variations in the smoothed spectrum)
-        cont_func_dic = dataload_npz(gen_dic['save_data_dir']+'Stellar_cont_DI/St_cont_'+inst+'_'+vis_det)['cont_func_dic']
-        flux_mast_norm = flux_mast[0]
-        flux_mast_norm[cond_def_mast[0]] /=cont_func_dic(cen_bins_mast[0,cond_def_mast[0]])
-
-        #---------------------------------------------------------------------------------------------------------------------
-        #Telluric contamination
-        if data_dic['DI']['mask']['verbose']:print('           Mean telluric spectrum')
-        if gen_dic['corr_tell']:tell_spec = np.zeros(nspec,dtype=float)
-        else:tell_spec = None
-        specdopshift_receiver_Earth_inbin = []
-        nexp_in_bin = np.zeros(nspec,dtype=float) 
-        for vis_bin in data_bin['vis_iexp_in_bin']:
+        ## ITERATE THROUGH INDIVIDUAL EXPOSURES ##
+        
+        for curent_exp in range(n_iter):
             
-            #Retrieve mean RV shifts used to align data
-            data_align_comp = dataload_npz(gen_dic['save_data_dir']+'Aligned_DI_data/'+inst+'_'+vis_bin+'__add')
+            if curent_exp == 0: # master 
+                
+                if data_dic['DI']['mask']['verbose']:print('           Continuum-normalization')
 
-            #Define mean telluric spectrum over all exposures used in the master stellar spectrum
-            #    - iexp is relative to global or in-transit indexes depending on data_type                
-            for iexp in data_bin['vis_iexp_in_bin'][vis_bin]:
-                if data_type_gen=='Intr':iexp_orig = gen_dic[inst][vis_bin]['idx_in'][iexp]
-                else:iexp_orig = iexp
+                #Limit master to minimum definition range
+                idx_def_mast = np_where1D(data_mast['cond_def'][0])
+                flux_mast = data_mast['flux'][:,idx_def_mast[0]:idx_def_mast[-1]+1]
+                cen_bins_mast = data_mast['cen_bins'][:,idx_def_mast[0]:idx_def_mast[-1]+1]
+                cond_def_mast = data_mast['cond_def'][:,idx_def_mast[0]:idx_def_mast[-1]+1]
+                edge_bins_mast = data_mast['edge_bins'][:,idx_def_mast[0]:idx_def_mast[-1]+2]
+                nspec = len(flux_mast[0])
+                
+                #Continuum-normalisation
+                #    - nan gaps are left as is. They will broaden when the master spectrum is smoothed, but this is better than filling in the gaps with artificial values
+                # (especially zero values that creates sharp variations in the smoothed spectrum)
+                cont_func_dic = dataload_npz(gen_dic['save_data_dir']+'Stellar_cont_DI/St_cont_'+inst+'_'+vis_det)['cont_func_dic']
+                flux_mast_norm = flux_mast[0]
+                flux_mast_norm[cond_def_mast[0]] /=cont_func_dic(cen_bins_mast[0,cond_def_mast[0]])
+                
+                # dic_test_mast.update({'data_mast':data_mast,
+                #                 'idx_def_mast': idx_def_mast,
+                #                'flux_mast': flux_mast,
+                #                'cen_bins_mast': cen_bins_mast,
+                #                'cond_def_mast': cond_def_mast,
+                #                'cond_def_mast': cond_def_mast,
+                #                'edge_bins_mast': edge_bins_mast,
+                #                'flux_mast_norm': flux_mast_norm
+                #                })
+
+                #---------------------------------------------------------------------------------------------------------------------
+                #Telluric contamination
+                # For now ignoring the telluric correction for the individual exposures
+                if data_dic['DI']['mask']['verbose']:print('           Mean telluric spectrum')
+                if gen_dic['corr_tell']:tell_spec = np.zeros(nspec,dtype=float)
+                else:tell_spec = None
+                specdopshift_receiver_Earth_inbin = []
+                nexp_in_bin = np.zeros(nspec,dtype=float) 
+                for vis_bin in data_bin['vis_iexp_in_bin']:
+                    #Retrieve mean RV shifts used to align data
+                    data_align_comp = dataload_npz(gen_dic['save_data_dir']+'Aligned_DI_data/'+inst+'_'+vis_bin+'__add')
+
+                    #Define mean telluric spectrum over all exposures used in the master stellar spectrum
+                    #    - iexp is relative to global or in-transit indexes depending on data_type                
+                    for iexp in data_bin['vis_iexp_in_bin'][vis_bin]:
+                        if data_type_gen=='Intr':iexp_orig = gen_dic[inst][vis_bin]['idx_in'][iexp]
+                        else:iexp_orig = iexp
+
+                        #Align and resample telluric spectra
+                        #    - see gen_specdopshift():
+                        # w_source = w_receiver / (1+ (rv[s/r]/c))       
+                        #      disk-integrated spectra used in the binning were aligned in the star rest frame, so we shift their telluric spectrum back to the Earth rest frame as
+                        # w(tell/earth) = w(tell/star) / ( (1+ (rv[Earth/solbar]/c)) * (1+ (rv[solbar/starbar]/c)) * (1+ (rv[starbar/star]/c)) )
+                        #               = w(tell/star) / ( (1+ (BERV/c)) * (1- (rv_sys/c)) * (1- (rv_kep/c)) )    
+                        #      intrinsic spectra used in the binning were aligned in the photosphere rest frame, so we shift their telluric spectrum back to the Earth rest frame as
+                        # w(tell/earth) = w(tell/star) / ( (1+ (BERV/c)) * (1- (rv_sys/c)) * (1- (rv_kep/c)) * (1+ (rv[star/photo]/c) ) 
+                        #               = w(tell/star) / ( (1+ (BERV/c)) * (1- (rv_sys/c)) * (1- (rv_kep/c)) * (1- (rv_surf/c)) )              
+                        #    - the resulting master telluric spectrum is aligned in the Earth rest frame  
+                        specdopshift_earth_receiver = 1./(gen_specdopshift(data_prop[inst][vis_bin]['BERV'][iexp_orig])*(1.+1.55e-8)*gen_specdopshift(-data_align_comp['rv_starbar_solbar'])*gen_specdopshift(-data_align_comp['star_starbar'][iexp_orig]))
+                        if (data_type_gen=='Intr'):specdopshift_earth_receiver *= 1./gen_specdopshift(-data_align_comp['surf_star'][iexp])
+                        specdopshift_receiver_Earth_inbin+=[1./specdopshift_earth_receiver]
+                        if tell_spec is not None:
+                            
+                            #Retrieve the 1D telluric spectrum associated with the exposure
+                            #    - we retrieve the spectrum associated with the 1D exposure before it was binned
+                            data_exp = dataload_npz(data_bin['vis_iexp_in_bin'][vis_bin][iexp]['data_path'])
+                            cond_def_exp = data_exp['cond_def'][0]
+                            tell_exp = dataload_npz(data_bin['vis_iexp_in_bin'][vis_bin][iexp]['data_path'].split('20240130')[0] + '20240130__tell' + str(iexp))['tell'][0] # temporary fix Alexis 02-05
+                            # tell_exp = dataload_npz(data_bin['vis_iexp_in_bin'][vis_bin][iexp]['tell_path'])['tell'][0]      
+                            tell_exp[~cond_def_exp] = np.nan
+                            
+                            #Shifting telluric spectrum back from receiver (star or photosphere) back to Earth (source) rest frame
+                            edge_bins_earth=data_exp['edge_bins'][0]*specdopshift_earth_receiver
+                            tell_exp = bind.resampling(edge_bins_mast[0],edge_bins_earth,tell_exp, kind=gen_dic['resamp_mode'])
+                        
+                            #Co-add
+                            cond_def_tell = ~np.isnan(tell_exp)
+                            tell_spec[cond_def_tell]+=tell_exp[cond_def_tell]
+                            nexp_in_bin[cond_def_tell]+=1.
+
+                #Average telluric spectrum
+                if tell_spec is not None:
+                    cond_def_tell = nexp_in_bin>0.
+                    tell_spec[cond_def_tell]/=nexp_in_bin[cond_def_tell]
+                    tell_spec[~cond_def_tell] = 1.
+                    
+                #Min/max Doppler shift of tellurics in the rest frame of the stellar master spectrum 
+                min_specdopshift_receiver_Earth = np.min(specdopshift_receiver_Earth_inbin)
+                max_specdopshift_receiver_Earth = np.max(specdopshift_receiver_Earth_inbin)
+
+                # Mask generation for the master spectra
+                #    - defined in the stellar (for disk-integrated profiles) or surface (for intrinsic profiles) rest frames
+                mask_waves,mask_weights,mask_info = KitCat_main.kitcat_mask(mask_dic,mask_dic['fwhm_ccf'],cen_bins_mast[0],inst,edge_bins_mast[0],flux_mast_norm,gen_dic,save_data_paths,tell_spec,data_dic['DI']['sysvel'][inst][vis_bin],min_specdopshift_receiver_Earth,
+                                                                max_specdopshift_receiver_Earth,dic_sav,plot_dic[data_type_gen+'mask_spectra'],plot_dic[data_type_gen+'mask_ld'],plot_dic[data_type_gen+'mask_ld_lw'],plot_dic[data_type_gen+'mask_RVdev_fit'],cont_func_dic,
+                                                                data_bin['vis_iexp_in_bin'],data_type_gen,data_dic,plot_dic[data_type_gen+'mask_tellcont'],plot_dic[data_type_gen+'mask_vald_depthcorr'],plot_dic[data_type_gen+'mask_morphasym'],
+                                                                plot_dic[data_type_gen+'mask_morphshape'],plot_dic[data_type_gen+'mask_RVdisp'],run_indiv_exp)
+                
+                if mask_dic['indiv_exp']: # If we are going to continue to loop over all exposures, then copy the master dictionary and add new dimensions
+                    dic_sav_exp = dic_sav.copy()
+                    # Make the indiv_exp dictionnary 2D, 
+                    # ===== TBD: Add all the correct values needed  =====
+                    #dic_sav_exp['cen_bins_reg'] = dic_sav_exp['cen_bins_reg'][np.newaxis,:] 
+                    #dic_sav_exp['flux_norm_reg'] = dic_sav_exp['flux_norm_reg'][np.newaxis,:]
+                else:
+                    pass  
+
+            else: # individual exposures
+                
+                if data_dic['DI']['mask']['verbose']:print('           Continuum-normalization')                
+                
+                run_indiv_exp = True
+                data_spec = indiv_exp[curent_exp-1]
+                ## data_spec is not the same format as data_mast.. to be fixed
+              
+                ######### FORMAT INDIVIDUAL SPECTRAS #############
+                #Limit spectra to minimum definition range
+                idx_def_spec = idx_def_mast# np_where1D(data_spec['cond_def'][0]) # reuse from mast
+                flux_spec = data_spec['flux'][:,idx_def_spec[0]:idx_def_spec[-1]+1]
+                cen_bins_spec = data_spec['cen_bins'][:,idx_def_spec[0]:idx_def_spec[-1]+1]
+                cond_def_spec = data_spec['cond_def'][:,idx_def_spec[0]:idx_def_spec[-1]+1]
+                edge_bins_spec = data_spec['edge_bins'][:,idx_def_spec[0]:idx_def_spec[-1]+2]
+                nspec = len(flux_spec[0])
+                
+                #Continuum-normalisation
+                #    - nan gaps are left as is. They will broaden when the master spectrum is smoothed, but this is better than filling in the gaps with artificial values
+                # (especially zero values that creates sharp variations in the smoothed spectrum)
+                cont_func_dic = dataload_npz(gen_dic['save_data_dir']+'Stellar_cont_DI/St_cont_'+inst+'_'+vis_det)['cont_func_dic']
+                flux_spec_norm = flux_spec[0]
+                flux_spec_norm[cond_def_spec[0]] /=cont_func_dic(cen_bins_spec[0,cond_def_spec[0]])
+                
+                #---------------------------------------------------------------------------------------------------------------------
+                #Telluric contamination
+            
+                # For now ignoring the telluric correction for the individual exposures
+                if data_dic['DI']['mask']['verbose']:print('           Current telluric spectrum')
+                if gen_dic['corr_tell']:tell_spec = np.zeros(nspec,dtype=float)
+                else:tell_spec = None
+                specdopshift_receiver_Earth_inbin = []
+                nexp_in_bin = np.zeros(nspec,dtype=float) 
+                
+                vis_bin = '20240130'
+                #Retrieve mean RV shifts used to align data
+                data_align_comp = dataload_npz(gen_dic['save_data_dir']+'Aligned_DI_data/'+inst+'_'+vis_bin+'__add')
+
+                # ?????? Does iexp = iexp_orig for the individual exposures?? To clarify
+                #Define mean telluric spectrum over all exposures used in the master stellar spectrum
+                #    - iexp is relative to global or in-transit indexes depending on data_type                
+                if data_type_gen=='Intr':iexp_orig = gen_dic[inst][vis_bin]['idx_in'][curent_exp]
+                else:iexp_orig = curent_exp
+                
+
 
                 #Align and resample telluric spectra
                 #    - see gen_specdopshift():
@@ -116,44 +255,63 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
                 # w(tell/earth) = w(tell/star) / ( (1+ (BERV/c)) * (1- (rv_sys/c)) * (1- (rv_kep/c)) * (1+ (rv[star/photo]/c) ) 
                 #               = w(tell/star) / ( (1+ (BERV/c)) * (1- (rv_sys/c)) * (1- (rv_kep/c)) * (1- (rv_surf/c)) )              
                 #    - the resulting master telluric spectrum is aligned in the Earth rest frame  
-                specdopshift_earth_receiver = 1./(gen_specdopshift(data_prop[inst][vis_bin]['BERV'][iexp_orig])*(1.+1.55e-8)*gen_specdopshift(-data_align_comp['rv_starbar_solbar'])*gen_specdopshift(-data_align_comp['star_starbar'][iexp_orig]))
-                if (data_type_gen=='Intr'):specdopshift_earth_receiver *= 1./gen_specdopshift(-data_align_comp['surf_star'][iexp])
+                specdopshift_earth_receiver = 1./(gen_specdopshift(data_prop[inst][vis_bin]['BERV'][curent_exp])*(1.+1.55e-8)*gen_specdopshift(-data_align_comp['rv_starbar_solbar'])*gen_specdopshift(-data_align_comp['star_starbar'][curent_exp]))
+                if (data_type_gen=='Intr'):specdopshift_earth_receiver *= 1./gen_specdopshift(-data_align_comp['surf_star'][curent_exp])
                 specdopshift_receiver_Earth_inbin+=[1./specdopshift_earth_receiver]
                 if tell_spec is not None:
                     
                     #Retrieve the 1D telluric spectrum associated with the exposure
                     #    - we retrieve the spectrum associated with the 1D exposure before it was binned
-                    data_exp = dataload_npz(data_bin['vis_iexp_in_bin'][vis_bin][iexp]['data_path'])
+                    data_exp = dataload_npz(data_bin['vis_iexp_in_bin'][vis_bin][curent_exp]['data_path'])
                     cond_def_exp = data_exp['cond_def'][0]
-                    tell_exp = dataload_npz(data_bin['vis_iexp_in_bin'][vis_bin][iexp]['tell_path'])['tell'][0]      
+                    tell_exp = dataload_npz(data_bin['vis_iexp_in_bin'][vis_bin][iexp]['data_path'].split('20240130')[0] + '20240130__tell' + str(iexp))['tell'][0] # temporary fix Alexis 02-05
+                    tell_exp# = dataload_npz(data_bin['vis_iexp_in_bin'][vis_bin][curent_exp]['tell_path'])['tell'][0]      
                     tell_exp[~cond_def_exp] = np.nan
                     
                     #Shifting telluric spectrum back from receiver (star or photosphere) back to Earth (source) rest frame
                     edge_bins_earth=data_exp['edge_bins'][0]*specdopshift_earth_receiver
                     tell_exp = bind.resampling(edge_bins_mast[0],edge_bins_earth,tell_exp, kind=gen_dic['resamp_mode'])
+                    
+                    #Co-add -- Not happening for individual exposures
+                    #cond_def_tell = ~np.isnan(tell_exp)
+                    #tell_spec[cond_def_tell]+=tell_exp[cond_def_tell]
+                    #nexp_in_bin[cond_def_tell]+=1.
+
+                #Average telluric spectrum
+                # if data_inst['tell_sp']:
+                #     cond_def_tell = nexp_in_bin>0.
+                #     tell_spec[cond_def_tell]/=nexp_in_bin[cond_def_tell]
+                #     tell_spec[~cond_def_tell] = 1.
+                    
+                #Min/max Doppler shift of tellurics in the rest frame of the stellar master spectrum 
+                min_specdopshift_receiver_Earth = np.min(specdopshift_receiver_Earth_inbin)
+                max_specdopshift_receiver_Earth = np.max(specdopshift_receiver_Earth_inbin)
                 
-                    #Co-add
-                    cond_def_tell = ~np.isnan(tell_exp)
-                    tell_spec[cond_def_tell]+=tell_exp[cond_def_tell]
-                    nexp_in_bin[cond_def_tell]+=1.
+                # dic_test_spec.update({'data_spec':data_spec,
+                #                'idx_def_spec': idx_def_spec,
+                #                'flux_spec': flux_spec,
+                #                'cen_bins_spec': cen_bins_spec,
+                #                'cond_def_spec': cond_def_spec,
+                #                'cond_def_spec': cond_def_spec,
+                #                'edge_bins_spec': edge_bins_spec,
+                #                'flux_spec_norm': flux_spec_norm
+                #                })
+                
+                # datasave_npz(save_data_paths+'Plot_info_mast',dic_test_mast)
+                # datasave_npz(save_data_paths+'Plot_info_spec',dic_test_spec)
+                                
+                print(f'           > Analysing LBL properties for individual exp {curent_exp}')
+                # Apply to individual exposures, inside the function dic_sav_exp will be updated 
+                _,_,_ = KitCat_main.kitcat_mask(mask_dic,mask_dic['fwhm_ccf'],cen_bins_spec[0],inst,edge_bins_spec[0],flux_spec_norm,gen_dic,save_data_paths,tell_spec,data_dic['DI']['sysvel'][inst][vis_bin],min_specdopshift_receiver_Earth,
+                                                                max_specdopshift_receiver_Earth,dic_sav_exp,plot_dic[data_type_gen+'mask_spectra'],plot_dic[data_type_gen+'mask_ld'],plot_dic[data_type_gen+'mask_ld_lw'],plot_dic[data_type_gen+'mask_RVdev_fit'],cont_func_dic,
+                                                                data_bin['vis_iexp_in_bin'],data_type_gen,data_dic,plot_dic[data_type_gen+'mask_tellcont'],plot_dic[data_type_gen+'mask_vald_depthcorr'],plot_dic[data_type_gen+'mask_morphasym'],
+                                                                plot_dic[data_type_gen+'mask_morphshape'],plot_dic[data_type_gen+'mask_RVdisp'],run_indiv_exp)
+                
+                datasave_npz(save_data_paths+'Plot_info',dic_sav)
+                datasave_npz(save_data_paths+'Plot_info_exp',dic_sav_exp)
 
-        #Average telluric spectrum
-        if tell_spec is not None:
-            cond_def_tell = nexp_in_bin>0.
-            tell_spec[cond_def_tell]/=nexp_in_bin[cond_def_tell]
-            tell_spec[~cond_def_tell] = 1.
-            
-        #Min/max Doppler shift of tellurics in the rest frame of the stellar master spectrum 
-        min_specdopshift_receiver_Earth = np.min(specdopshift_receiver_Earth_inbin)
-        max_specdopshift_receiver_Earth = np.max(specdopshift_receiver_Earth_inbin)
 
-        #Mask generation
-        #    - defined in the stellar (for disk-integrated profiles) or surface (for intrinsic profiles) rest frames
-        from antaress.ANTARESS_conversions.KitCat import KitCat_main
-        mask_waves,mask_weights,mask_info = KitCat_main.kitcat_mask(mask_dic,mask_dic['fwhm_ccf'],cen_bins_mast[0],inst,edge_bins_mast[0],flux_mast_norm,gen_dic,save_data_paths,tell_spec,data_dic['DI']['sysvel'][inst][vis_bin],min_specdopshift_receiver_Earth,
-                                                        max_specdopshift_receiver_Earth,dic_sav,plot_dic[data_type_gen+'mask_spectra'],plot_dic[data_type_gen+'mask_ld'],plot_dic[data_type_gen+'mask_ld_lw'],plot_dic[data_type_gen+'mask_RVdev_fit'],cont_func_dic,
-                                                        data_bin['vis_iexp_in_bin'],data_type_gen,data_dic,plot_dic[data_type_gen+'mask_tellcont'],plot_dic[data_type_gen+'mask_vald_depthcorr'],plot_dic[data_type_gen+'mask_morphasym'],
-                                                        plot_dic[data_type_gen+'mask_morphshape'],plot_dic[data_type_gen+'mask_RVdisp'])
+
 
         #Save mask in format readable by ESPRESSO-like DRSs
         #    - the convention for those DRS is that masks are defined in air
@@ -184,12 +342,11 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
         flux_mast_norm = flux_mast[0]
 
         stop('Code Atmospheric mask routine based on expected species in the planet')
-
+    
     #Save for plotting
     if (plot_dic[data_type_gen+'mask_spectra']!='') | (plot_dic[data_type_gen+'mask_ld_lw']!='') | (plot_dic[data_type_gen+'mask_RVdev_fit']!=''):
         datasave_npz(save_data_paths+'Plot_info',dic_sav)
+        if mask_dic['indiv_exp']:
+            datasave_npz(save_data_paths+'Plot_info_exp',dic_sav_exp)
 
     return None
-
-
-

@@ -721,7 +721,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         if gen_dic['DImast_weight']:weights_on+='(DI master) '
         else:weights_off+='(DI master) '
         if gen_dic['DImast_weight'] and gen_dic['calc_DImast']:gen_dic['calc_DImast'] =  gen_dic['calc_diff_data'] | (gen_dic['calc_loc_prof_est'] &  (data_dic['Intr']['opt_loc_prof_est']['corr_mode'] in ['DIbin','Intrbin'])) | gen_dic['calc_spec_1D'] | gen_dic['calc_bin'] | gen_dic['calc_binmultivis']
-        if ('spec2D' in gen_dic['all_types']):gen_dic['cal_weight'] = cond_def | gen_dic['corr_wig']   
+        if ('spec2D' in gen_dic['all_types']):gen_dic['cal_weight'] = cond_def   
         else:gen_dic['cal_weight'] = False   
         if gen_dic['cal_weight']:weights_on+='(Calibration) '
         else:weights_off+='(Calibration) '
