@@ -1,4 +1,7 @@
 # **A**dvanced and **N**eat **T**echniques for the **A**ccurate **R**etrieval of **E**xoplanetary and **S**tellar **S**pectra
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/wangxianyu7/ANTARESS)
+
+A fork of [https://gitlab.unige.ch/spice_dune/antaress](https://gitlab.unige.ch/spice_dune/antaress).
 
 The documentation of the stable release on the PyPI repository can be found [here](https://obswww.unige.ch/~bourriev/antaress/doc/html/).
 
